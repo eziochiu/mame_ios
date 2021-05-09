@@ -38,6 +38,7 @@
 !/.travis.yml
 !/makefile
 !/mame.doxygen
+!/make-*.sh
 !/*.md
 !/*.bdf
 !/LICENSE

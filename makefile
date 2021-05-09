@@ -25,6 +25,7 @@
 # OSD = sdl
 
 # NO_OPENGL = 0
+# NO_BGFX = 0
 # USE_DISPATCH_GL = 0
 # MODERN_WIN_API = 0
 # DIRECTINPUT = 7

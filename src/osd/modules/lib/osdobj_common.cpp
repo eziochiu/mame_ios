@@ -19,7 +19,7 @@
 const options_entry osd_options::s_option_entries[] =
 {
 	{ nullptr,                               nullptr,           OPTION_HEADER,    "OSD KEYBOARD MAPPING OPTIONS" },
-#if defined(SDLMAME_MACOSX) || defined(OSD_MAC)
+#if defined(SDLMAME_MACOSX) || defined(OSD_MAC) || defined(OSD_IOS)
 	{ OSDOPTION_UIMODEKEY,                   "DEL",             OPTION_STRING,    "key to enable/disable MAME controls when emulated system has keyboard inputs" },
 #else
 	{ OSDOPTION_UIMODEKEY,                   "SCRLOCK",         OPTION_STRING,    "key to enable/disable MAME controls when emulated system has keyboard inputs" },
@@ -153,6 +153,7 @@ const options_entry osd_options::s_option_entries[] =
 	{ OSDOPTION_AUDIO_EFFECT "9",             OSDOPTVAL_NONE,   OPTION_STRING,    "AudioUnit effect 9" },
 #endif
 
+#if !defined(USE_BGFX) || (USE_BGFX != 0)
 	{ nullptr,                                nullptr,           OPTION_HEADER, "BGFX POST-PROCESSING OPTIONS" },
 	{ OSDOPTION_BGFX_PATH,                    "bgfx",            OPTION_STRING, "path to BGFX-related files" },
 	{ OSDOPTION_BGFX_BACKEND,                 "auto",            OPTION_STRING, "BGFX backend to use (d3d9, d3d11, metal, opengl, gles)" },
@@ -161,7 +162,7 @@ const options_entry osd_options::s_option_entries[] =
 	{ OSDOPTION_BGFX_SHADOW_MASK,             "slot-mask.png",   OPTION_STRING, "shadow mask texture name" },
 	{ OSDOPTION_BGFX_LUT,                     "",                OPTION_STRING, "LUT texture name" },
 	{ OSDOPTION_BGFX_AVI_NAME,                OSDOPTVAL_AUTO,    OPTION_STRING, "filename for BGFX output logging" },
-
+#endif
 		// End of list
 	{ nullptr }
 };
@@ -212,6 +213,7 @@ osd_common_t::~osd_common_t()
 
 void osd_common_t::register_options()
 {
+#ifndef OSD_IOS
 	REGISTER_MODULE(m_mod_man, FONT_OSX);
 	REGISTER_MODULE(m_mod_man, FONT_WINDOWS);
 	REGISTER_MODULE(m_mod_man, FONT_DWRITE);
@@ -282,7 +284,35 @@ void osd_common_t::register_options()
 	REGISTER_MODULE(m_mod_man, OUTPUT_CONSOLE);
 	REGISTER_MODULE(m_mod_man, OUTPUT_NETWORK);
 	REGISTER_MODULE(m_mod_man, OUTPUT_WIN32);
+    
+#else // OSD_IOS
+    REGISTER_MODULE(m_mod_man, FONT_NONE);
 
+    //REGISTER_MODULE(m_mod_man, SOUND_COREAUDIO);
+    REGISTER_MODULE(m_mod_man, SOUND_NONE);
+
+    //REGISTER_MODULE(m_mod_man, MONITOR_IOS);
+
+    REGISTER_MODULE(m_mod_man, NETDEV_NONE);
+    REGISTER_MODULE(m_mod_man, DEBUG_NONE);
+    REGISTER_MODULE(m_mod_man, MIDI_NONE);
+
+    //REGISTER_MODULE(m_mod_man, KEYBOARDINPUT_IOS);
+    REGISTER_MODULE(m_mod_man, KEYBOARD_NONE);
+
+    //REGISTER_MODULE(m_mod_man, MOUSEINPUT_IOS);
+    REGISTER_MODULE(m_mod_man, MOUSE_NONE);
+
+    //REGISTER_MODULE(m_mod_man, LIGHTGUNINPUT_IOS);
+    REGISTER_MODULE(m_mod_man, LIGHTGUN_NONE);
+
+    //REGISTER_MODULE(m_mod_man, JOYSTICKINPUT_IOS);
+    REGISTER_MODULE(m_mod_man, JOYSTICK_NONE);
+
+    REGISTER_MODULE(m_mod_man, OUTPUT_NONE);
+    REGISTER_MODULE(m_mod_man, OUTPUT_CONSOLE);
+    REGISTER_MODULE(m_mod_man, OUTPUT_NETWORK);
+#endif
 
 	// after initialization we know which modules are supported
 
