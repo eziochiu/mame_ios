@@ -1,3 +1,9 @@
+# **FORKED MAME** #
+This is a fork of `MAME` used to build the [MAME4iOS](https://github.com/yoshisuga/MAME4iOS) app.
+
+The iOS OSD does not build a normal app, it builds a static library named `libmame-ios.a`
+
+To build run `./make-ios.sh` or `./make-ios.sh tvos` 
 
 # **MAME** #
 
