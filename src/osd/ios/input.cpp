@@ -247,26 +247,22 @@ void osd_set_aggressive_input_focus(bool aggressive_focus)
 //  convert myosd_keycode -> input_item_id
 //============================================================
 
+#define LERPKEY(key, key0, key1, item0, item1) \
+    _Static_assert((key1 - key0) == ((int)item1 - (int)item0), ""); \
+    if (key >= key0 && key <= key1) \
+        return (input_item_id)((int)item0 + (key - key0));
+
+#define MAPKEY(key, A, B) \
+    LERPKEY(key, MYOSD_KEY_ ## A, MYOSD_KEY_ ## B, ITEM_ID_ ## A, ITEM_ID_ ## B)
+
 static input_item_id key_map(myosd_keycode key)
 {
-    _Static_assert(MYOSD_KEY_A == (int)ITEM_ID_A, "");
-    _Static_assert(MYOSD_KEY_0 == (int)ITEM_ID_0, "");
-    _Static_assert(MYOSD_KEY_F1 == (int)ITEM_ID_F1, "");
-    _Static_assert(MYOSD_KEY_F15 == (int)ITEM_ID_F15, "");
-    if (key >= MYOSD_KEY_A && key <= MYOSD_KEY_F15)
-        return (input_item_id)key;
-    
-    // missing F16-F20
-    _Static_assert(MYOSD_KEY_ESC == (int)ITEM_ID_ESC-5, "");
-    _Static_assert(MYOSD_KEY_ENTER_PAD == (int)ITEM_ID_ENTER_PAD-5, "");
-    if (key >= MYOSD_KEY_ESC && key <= MYOSD_KEY_ENTER_PAD)
-        return (input_item_id)(key+5);
+    _Static_assert(MYOSD_KEY_FIRST == MYOSD_KEY_A, "");
+    _Static_assert(MYOSD_KEY_LAST  == MYOSD_KEY_CANCEL, "");
 
-    // missing BS_PAD, TAB_PAD, 00_PAD, 000_PAD, COMMA_PAD, EQUALS_PAD
-    _Static_assert(MYOSD_KEY_PRTSCR == (int)ITEM_ID_PRTSCR-11, "");
-    _Static_assert(MYOSD_KEY_CANCEL == (int)ITEM_ID_CANCEL-11, "");
-    if (key >= MYOSD_KEY_PRTSCR && key <= MYOSD_KEY_CANCEL)
-        return (input_item_id)(key+11);
+    MAPKEY(key, A, F15)         // missing F16-F20
+    MAPKEY(key, ESC, ENTER_PAD) // missing BS_PAD, TAB_PAD, 00_PAD, 000_PAD, COMMA_PAD, EQUALS_PAD
+    MAPKEY(key, PRTSCR, CANCEL)
     
     return ITEM_ID_INVALID;
 }

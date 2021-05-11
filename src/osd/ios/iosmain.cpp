@@ -20,6 +20,7 @@
 #include "gamedrv.h"
 #include "drivenum.h"
 #include "screen.h"
+#include "softlist_dev.h"
 #include "strconv.h"
 #include "corestr.h"
 
@@ -163,7 +164,7 @@ void ios_osd_interface::output_callback(osd_output_channel channel, const util::
 //============================================================
 // get_game_info - convert game_driver to a myosd_game_info
 //============================================================
-static void get_game_info(myosd_game_info* info, const game_driver *driver, emu_options *options)
+static void get_game_info(myosd_game_info* info, const game_driver *driver, running_machine &machine)
 {
     memset(info, 0, sizeof(myosd_game_info));
     
@@ -222,14 +223,70 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, emu_
         info->flags |= MYOSD_GAME_INFO_SUPPORTS_SAVE;
 
     // check for a vector game
-    machine_config config(*driver, *options);
+    machine_config config(*driver, machine.options());
     for (const screen_device &device : screen_device_enumerator(config.root_device()))
     {
         if (device.screen_type() == SCREEN_TYPE_VECTOR)
             info->flags |= MYOSD_GAME_INFO_VECTOR;
     }
     
-    // TODO: get software list(s)
+    // get software lists for this system
+    if (type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_COMPUTER)
+    {
+        static std::unordered_set<std::string> g_software;
+        
+        std::string software;
+        software_list_device_enumerator iter(config.root_device());
+        for (software_list_device &swlistdev : iter)
+        {
+            if (software.size() != 0)
+                software.append(",");
+            software.append(swlistdev.list_name());
+        }
+        //osd_printf_debug("SOFTWARE: '%s'\n", software.c_str());
+        info->software_list = g_software.insert(software).first->c_str();
+    }
+}
+
+//============================================================
+// get_game_list - get list of available games
+//============================================================
+static std::vector<myosd_game_info> get_game_list(running_machine &machine)
+{
+    // this is the same code, and method, used by selgame.cpp
+    std::size_t const total = driver_list::total();
+    std::vector<bool> included(total, false);
+
+    // iterate over ROM directories and look for potential ROMs
+    file_enumerator path(machine.options().media_path());
+    for (osd::directory::entry const *dir = path.next(); dir; dir = path.next())
+    {
+        char drivername[50];
+        char *dst = drivername;
+        char const *src;
+
+        // build a name for it
+        for (src = dir->name; *src != 0 && *src != '.' && dst < &drivername[std::size(drivername) - 1]; ++src)
+            *dst++ = tolower(uint8_t(*src));
+
+        *dst = 0;
+        int const drivnum = driver_list::find(drivername);
+        if (0 <= drivnum)
+            included[drivnum] = true;
+    }
+    
+    // now build a list of just avail games, as myosd_game_info(s)
+    std::vector<myosd_game_info> list;
+    for (int i = 0; i < total; i++)
+    {
+        game_driver const &driver(driver_list::driver(i));
+        if (included[i]) {
+            myosd_game_info info;
+            get_game_info(&info, &driver, machine);
+            list.push_back(info);
+        }
+    }
+    return list;
 }
 
 //============================================================
@@ -261,7 +318,6 @@ void ios_osd_interface::init(running_machine &machine)
     // This callback is also the last opportunity to adjust the options
     // before they are consumed by the rest of the core.
     //
-
     m_machine = &machine;
     
     // ensure we get called on the way out
@@ -273,18 +329,24 @@ void ios_osd_interface::init(running_machine &machine)
     if (options.verbose() || DebugLog > 1)
         set_verbose(true);
     
+    video_init();
+    input_init();
+    sound_init();
+
     bool in_game = (&m_machine->system() != &GAME_NAME(___empty));
         
     if (m_callbacks.game_init != NULL && in_game)
     {
         myosd_game_info info;
-        get_game_info(&info, &m_machine->system(), &m_machine->options());
+        get_game_info(&info, &machine.system(), machine);
         m_callbacks.game_init(&info);
     }
-    
-    video_init();
-    input_init();
-    sound_init();
+    else if (m_callbacks.game_list != NULL && !in_game)
+    {
+        // TODO: is this too early to get game list?
+        std::vector<myosd_game_info> list = get_game_list(machine);
+        m_callbacks.game_list(list.data(), list.size());
+    }
 }
 
 //============================================================
@@ -310,6 +372,8 @@ void ios_osd_interface::machine_exit()
 // struct definitions
 static const options_entry myosd_option_entries[] =
 {
+//  { OPTION_INIPATH,       INI_PATH,   OPTION_STRING,     "path to ini files" },
+
     // MYOSD options
     { nullptr,              nullptr,    OPTION_HEADER,     "MYOSD OPTIONS" },
     { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,    "enable hiscore system" },
