@@ -142,6 +142,7 @@ enum MYOSD_GAME_INFO
     MYOSD_GAME_INFO_BIOS                = 1<<4,     // this driver entry is a BIOS root
     MYOSD_GAME_INFO_SUPPORTS_SAVE       = 1<<5,     // system supports save states
     MYOSD_GAME_INFO_VECTOR              = 1<<6,     // SCREEN is VECTOR
+    MYOSD_GAME_INFO_LCD                 = 1<<7,     // SCREEN is LCD
 };
 
 // this is copy/clone of the render_primitive in render.h passed up to UI/OSD layer in myosd_video_draw
@@ -342,8 +343,14 @@ enum myosd_keycode
     MYOSD_KEY_RCMD,
     MYOSD_KEY_MENU,
     MYOSD_KEY_CANCEL,
+    // special key alias(s)
     MYOSD_KEY_FIRST = MYOSD_KEY_A,
-    MYOSD_KEY_LAST = MYOSD_KEY_CANCEL
+    MYOSD_KEY_LAST = MYOSD_KEY_CANCEL,
+    MYOSD_KEY_CONFIGURE = MYOSD_KEY_TAB,
+    MYOSD_KEY_UI_MODE = MYOSD_KEY_NUMLOCK,
+    // special non-mapped keys
+    MYOSD_KEY_EXIT,
+    MYOSD_KEY_RESET,
 };
 
 // myosd_get and myosd_set - get and set global state from the MAME driver.

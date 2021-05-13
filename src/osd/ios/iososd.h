@@ -28,6 +28,24 @@ extern int myosd_display_width;
 extern int myosd_display_height;
 
 //============================================================
+//  OPTIONS
+//============================================================
+
+#define OPTION_HISCORE  "hiscore"
+#define OPTION_BEAM     "beam"
+#define OPTION_BENCH    "bench"
+
+class ios_options : public osd_options
+{
+public:
+    // construction/destruction
+    ios_options();
+
+private:
+    static const options_entry s_option_entries[];
+};
+
+//============================================================
 //  TYPE DEFINITIONS
 //============================================================
 
@@ -35,7 +53,7 @@ class ios_osd_interface : public osd_interface, osd_output
 {
 public:
 	// construction/destruction
-	ios_osd_interface(osd_options &options, myosd_callbacks &callbacks);
+	ios_osd_interface(ios_options &options, myosd_callbacks &callbacks);
 	virtual ~ios_osd_interface();
 
     // general overridables
@@ -59,8 +77,8 @@ public:
     // video overridables
     virtual void add_audio_to_recording(const int16_t *buffer, int samples_this_frame) override {}
     virtual std::vector<ui::menu_item> get_slider_list() override {
-        return m_sliders;
-        //return std::vector<ui::menu_item>();
+        //return m_sliders;
+        return std::vector<ui::menu_item>();
     }
 
     // font interface
@@ -78,7 +96,7 @@ public:
     
     // getters
     running_machine &machine() const { assert(m_machine != nullptr); return *m_machine; }
-    osd_options &options() { return m_options; }
+    ios_options &options() { return m_options; }
     render_target *target() const { assert(m_target != nullptr); return m_target; }
 
 private:
@@ -95,7 +113,7 @@ private:
 
     // internal state
     running_machine *m_machine;
-    osd_options &m_options;
+    ios_options &m_options;
     bool m_verbose;
     std::vector<ui::menu_item> m_sliders;
 

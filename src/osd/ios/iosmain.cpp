@@ -55,7 +55,7 @@ extern "C" int myosd_main(int argc, char** argv, myosd_callbacks* callbacks, siz
 
     std::vector<std::string> args = osd_get_command_line(argc, argv);
 
-    osd_options options;
+    ios_options options;
     ios_osd_interface osd(options, host_callbacks);
 
     return emulator_info::start_frontend(options, osd, args);
@@ -109,7 +109,7 @@ extern "C" void myosd_set(int var, intptr_t value)
 //  constructor
 //============================================================
 
-ios_osd_interface::ios_osd_interface(osd_options &options, myosd_callbacks &callbacks)
+ios_osd_interface::ios_osd_interface(ios_options &options, myosd_callbacks &callbacks)
 : m_options(options), m_verbose(false), m_callbacks(callbacks)
 {
     osd_output::push(this);
@@ -222,12 +222,14 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
     if (driver->flags & MACHINE_SUPPORTS_SAVE)
         info->flags |= MYOSD_GAME_INFO_SUPPORTS_SAVE;
 
-    // check for a vector game
+    // check for a vector or LCD screen
     machine_config config(*driver, machine.options());
     for (const screen_device &device : screen_device_enumerator(config.root_device()))
     {
         if (device.screen_type() == SCREEN_TYPE_VECTOR)
             info->flags |= MYOSD_GAME_INFO_VECTOR;
+        if (device.screen_type() == SCREEN_TYPE_LCD)
+            info->flags |= MYOSD_GAME_INFO_LCD;
     }
     
     // get software lists for this system
@@ -329,6 +331,30 @@ void ios_osd_interface::init(running_machine &machine)
     if (options.verbose() || DebugLog > 1)
         set_verbose(true);
     
+    // determine if we are benchmarking, and adjust options appropriately
+    int bench = options.int_value(OPTION_BENCH);
+    if (bench > 0)
+    {
+        options.set_value(OPTION_THROTTLE, false, OPTION_PRIORITY_MAXIMUM);
+        //options().set_value(OSDOPTION_SOUND, "none", OPTION_PRIORITY_MAXIMUM);
+        //options().set_value(OSDOPTION_VIDEO, "none", OPTION_PRIORITY_MAXIMUM);
+        options.set_value(OPTION_SECONDS_TO_RUN, bench, OPTION_PRIORITY_MAXIMUM);
+    }
+    
+    // check for HISCORE
+    if (options.bool_value(OPTION_HISCORE))
+    {
+        // TODO: enable hiscore system
+    }
+    
+    // check for OPTION_BEAM and map to OPTION_BEAM_WIDTH_MIN and MAX
+    float beam = options.float_value(OPTION_BEAM);
+    if (beam != 1.0)
+    {
+        options.set_value(OPTION_BEAM_WIDTH_MIN, beam, OPTION_PRIORITY_CMDLINE);
+        options.set_value(OPTION_BEAM_WIDTH_MAX, beam, OPTION_PRIORITY_CMDLINE);
+    }
+    
     video_init();
     input_init();
     sound_init();
@@ -343,7 +369,6 @@ void ios_osd_interface::init(running_machine &machine)
     }
     else if (m_callbacks.game_list != NULL && !in_game)
     {
-        // TODO: is this too early to get game list?
         std::vector<myosd_game_info> list = get_game_list(machine);
         m_callbacks.game_list(list.data(), list.size());
     }
@@ -366,22 +391,29 @@ void ios_osd_interface::machine_exit()
 }
 
 //============================================================
-//  osd_setup_osd_specific_emu_options
+//  OPTIONS
 //============================================================
 
-// struct definitions
-static const options_entry myosd_option_entries[] =
+const options_entry ios_options::s_option_entries[] =
 {
-//  { OPTION_INIPATH,       INI_PATH,   OPTION_STRING,     "path to ini files" },
+    //  { OPTION_INIPATH,       INI_PATH,   OPTION_STRING,     "path to ini files" },
 
     // MYOSD options
-    { nullptr,              nullptr,    OPTION_HEADER,     "MYOSD OPTIONS" },
-    { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,    "enable hiscore system" },
+    { nullptr,              nullptr,    OPTION_HEADER,      "MYOSD OPTIONS" },
+    { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,     "enable hiscore system" },
+    { OPTION_BEAM,          "1.0",      OPTION_FLOAT,       "set vector beam width maximum" },
+    { OPTION_BENCH,         "0",        OPTION_INTEGER,     "benchmark for the given number of emulated seconds; implies -video none -sound none -nothrottle" },
 
     { nullptr }
 };
 
+ios_options::ios_options()
+: osd_options()
+{
+    add_entries(ios_options::s_option_entries);
+}
+
 void osd_setup_osd_specific_emu_options(emu_options &opts)
 {
-    opts.add_entries(myosd_option_entries);
+//opts.add_entries(ios_options::s_option_entries);
 }
