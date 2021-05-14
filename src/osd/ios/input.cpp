@@ -358,8 +358,6 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
     // default control mappings you want. It is quite possible
     // you won't need to change a thing.
     
-    //!!! OSDOPTION_UIMODEKEY
-
     //osd_printf_debug("INPUT TYPE LIST\n");
 
     // loop over the defaults

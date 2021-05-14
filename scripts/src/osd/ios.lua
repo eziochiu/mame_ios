@@ -28,7 +28,7 @@ function maintargetosdoptions(_target,_subtarget)
 --  kind "ConsoleApp"
 --  kind "SharedLib"
     kind "StaticLib"
-	osdmodulestargetconf()
+--	osdmodulestargetconf()
 end
 
 project ("osd_" .. _OPTIONS["osd"])
@@ -39,8 +39,14 @@ project ("osd_" .. _OPTIONS["osd"])
     defines {
         "OSD_IOS",
     }
-	osdmodulesbuild()
-
+	--osdmodulesbuild()
+     files {
+        MAME_DIR .. "src/osd/osdnet.cpp",
+        MAME_DIR .. "src/osd/osdnet.h",
+        MAME_DIR .. "src/osd/watchdog.cpp",
+        MAME_DIR .. "src/osd/watchdog.h",
+    }
+ 
 	includedirs {
 		MAME_DIR .. "src/emu",
 		MAME_DIR .. "src/devices", -- accessing imagedev from debugger
@@ -125,5 +131,5 @@ project ("qtdbg_" .. _OPTIONS["osd"])
         MAME_DIR .. "src/osd/modules/render",
         MAME_DIR .. "3rdparty",
     }
-    qtdebuggerbuild()
+    --qtdebuggerbuild()
 

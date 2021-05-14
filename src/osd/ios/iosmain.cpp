@@ -38,6 +38,25 @@ int myosd_display_width;
 int myosd_display_height;
 
 //============================================================
+//  OPTIONS
+//============================================================
+
+static const options_entry s_option_entries[] =
+{
+    //  { OPTION_INIPATH,       INI_PATH,   OPTION_STRING,     "path to ini files" },
+
+    // MYOSD options
+    { nullptr,              nullptr,    OPTION_HEADER,      "MYOSD OPTIONS" },
+    { OPTION_VIDEO,         "metal",    OPTION_STRING,      "video output method: none,metal" },
+    { OPTION_SOUND,         "ios",      OPTION_STRING,      "sound output method: none,ios" },
+    { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,     "enable hiscore system" },
+    { OPTION_BEAM,          "1.0",      OPTION_FLOAT,       "set vector beam width maximum" },
+    { OPTION_BENCH,         "0",        OPTION_INTEGER,     "benchmark for the given number of emulated seconds" },
+
+    { nullptr }
+};
+
+//============================================================
 //  myosd_main
 //============================================================
 
@@ -55,7 +74,10 @@ extern "C" int myosd_main(int argc, char** argv, myosd_callbacks* callbacks, siz
 
     std::vector<std::string> args = osd_get_command_line(argc, argv);
 
-    ios_options options;
+    // tons of code in MAME does a unsafe downcast from emu_options to osd_options, be carefull
+    // ...(we need to to have video, and sound in options entries)
+    emu_options options;
+    options.add_entries(s_option_entries);
     ios_osd_interface osd(options, host_callbacks);
 
     return emulator_info::start_frontend(options, osd, args);
@@ -109,7 +131,7 @@ extern "C" void myosd_set(int var, intptr_t value)
 //  constructor
 //============================================================
 
-ios_osd_interface::ios_osd_interface(ios_options &options, myosd_callbacks &callbacks)
+ios_osd_interface::ios_osd_interface(emu_options &options, myosd_callbacks &callbacks)
 : m_options(options), m_verbose(false), m_callbacks(callbacks)
 {
     osd_output::push(this);
@@ -336,8 +358,8 @@ void ios_osd_interface::init(running_machine &machine)
     if (bench > 0)
     {
         options.set_value(OPTION_THROTTLE, false, OPTION_PRIORITY_MAXIMUM);
-        //options().set_value(OSDOPTION_SOUND, "none", OPTION_PRIORITY_MAXIMUM);
-        //options().set_value(OSDOPTION_VIDEO, "none", OPTION_PRIORITY_MAXIMUM);
+        options.set_value(OPTION_SOUND, "none", OPTION_PRIORITY_MAXIMUM);
+        options.set_value(OPTION_VIDEO, "none", OPTION_PRIORITY_MAXIMUM);
         options.set_value(OPTION_SECONDS_TO_RUN, bench, OPTION_PRIORITY_MAXIMUM);
     }
     
@@ -390,30 +412,7 @@ void ios_osd_interface::machine_exit()
     sound_exit();
 }
 
-//============================================================
-//  OPTIONS
-//============================================================
-
-const options_entry ios_options::s_option_entries[] =
-{
-    //  { OPTION_INIPATH,       INI_PATH,   OPTION_STRING,     "path to ini files" },
-
-    // MYOSD options
-    { nullptr,              nullptr,    OPTION_HEADER,      "MYOSD OPTIONS" },
-    { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,     "enable hiscore system" },
-    { OPTION_BEAM,          "1.0",      OPTION_FLOAT,       "set vector beam width maximum" },
-    { OPTION_BENCH,         "0",        OPTION_INTEGER,     "benchmark for the given number of emulated seconds; implies -video none -sound none -nothrottle" },
-
-    { nullptr }
-};
-
-ios_options::ios_options()
-: osd_options()
-{
-    add_entries(ios_options::s_option_entries);
-}
-
 void osd_setup_osd_specific_emu_options(emu_options &opts)
 {
-//opts.add_entries(ios_options::s_option_entries);
+    opts.add_entries(s_option_entries);
 }

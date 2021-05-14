@@ -187,7 +187,7 @@ submenu::submenu(mame_ui_manager &mui, render_container &container, std::vector<
 		case option_type::OSD:
 			sm_option.entry = opts->get_entry(sm_option.name);
 			sm_option.options = opts;
-			if (sm_option.entry->type() == OPTION_STRING)
+			if (sm_option.entry != nullptr && sm_option.entry->type() == OPTION_STRING)
 			{
 				sm_option.value.clear();
 				std::string descr(sm_option.entry->description()), delim(", ");
@@ -253,6 +253,8 @@ void submenu::handle()
 		case option_type::EMU:
 		case option_type::UI:
 		case option_type::OSD:
+            if (sm_option.entry == nullptr)
+                break;
 			switch (sm_option.entry->type())
 			{
 			case OPTION_BOOLEAN:
@@ -354,6 +356,8 @@ void submenu::populate(float &customtop, float &custombottom)
 		case option_type::EMU:
 		case option_type::UI:
 		case option_type::OSD:
+            if (sm_option->entry == nullptr)
+                break;
 			switch (sm_option->entry->type())
 			{
 			case OPTION_BOOLEAN:
