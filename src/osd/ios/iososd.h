@@ -15,10 +15,12 @@
 //============================================================
 // DebugLog
 //============================================================
-#define DebugLog 0
+#define DebugLog 1
 #if DebugLog == 0
-#define osd_printf_verbose(...) (void)0
 #define osd_printf_debug(...) (void)0
+#endif
+#if DebugLog <= 1
+#define osd_printf_verbose(...) (void)0
 #endif
 
 //============================================================
@@ -89,7 +91,7 @@ public:
     virtual bool execute_command(const char *command) override {return true;}
 
     // midi interface
-    virtual std::unique_ptr<osd_midi_device> create_midi_device() override {return nullptr; /*std::make_unique<osd_midi_device_none>();*/}
+    virtual std::unique_ptr<osd_midi_device> create_midi_device() override {return nullptr;}
     
     // osd_output
     virtual void output_callback(osd_output_channel channel, const util::format_argument_pack<std::ostream> &args) override;

@@ -67,6 +67,7 @@ void ios_osd_interface::input_init()
 {
     osd_printf_verbose("ios_osd_interface::input_init\n");
     
+    // clear input state, this will cause input_update_init to be called later
     memset(&g_input, 0, sizeof(g_input));
     
     char name[32];
@@ -148,7 +149,6 @@ void ios_osd_interface::input_init()
     }
 }
 
-
 //============================================================
 //  exit
 //============================================================
@@ -162,6 +162,152 @@ void ios_osd_interface::input_exit()
 }
 
 //============================================================
+//  input init
+//============================================================
+void input_profile_init(running_machine &machine)
+{
+    osd_printf_verbose("input_profile_init: %d players=%d safe=%d\n", machine.ioport().ports().size(), machine.ioport().count_players(), machine.ioport().safe_to_read());
+
+    if (machine.ioport().ports().size() == 0)
+    {
+        // default empty machine
+        g_input.num_players = 1;
+        g_input.num_coins = 0;
+        g_input.num_inputs = 1;
+        g_input.num_ways = 4;
+        g_input.num_buttons = 0;
+        g_input.num_mouse = 0;
+        g_input.num_lightgun = 0;
+        g_input.num_keyboard = 0;
+    }
+    else
+    {
+        // assume an 8way by default, unless we find a 4way
+        g_input.num_ways = 8;
+        for (auto &port : machine.ioport().ports())
+        {
+            for (ioport_field &field : port.second->fields())
+            {
+                if (field.way() == 4)
+                    g_input.num_ways = 4;
+            }
+        }
+    
+        int way8 = 0;
+        g_input.num_buttons = 0;
+        g_input.num_lightgun = 0;
+        g_input.num_mouse = 0;
+        g_input.num_keyboard = 0;
+        g_input.num_players = 0;
+        g_input.num_coins = 0;
+        g_input.num_inputs = 0;
+
+        for (auto &port : machine.ioport().ports())
+        {
+            osd_printf_verbose("    PORT:%s\n", port.first);
+
+            for (ioport_field &field : port.second->fields())
+            {
+                osd_printf_verbose("        FIELD:%s player=%d type=%d way=%d\n", field.name(), field.player(), field.type(), field.way());
+                
+                // walk the input seq and look for highest device/joystick
+                if ((field.type() >= IPT_DIGITAL_JOYSTICK_FIRST && field.type() <= IPT_DIGITAL_JOYSTICK_LAST) ||
+                    (field.type() >= IPT_BUTTON1 && field.type() <= IPT_BUTTON12))
+                {
+                    input_seq const seq = field.seq(SEQ_TYPE_STANDARD);
+                    for (int i=0; seq[i] != input_seq::end_code; i++)
+                    {
+                        input_code code = seq[i];
+                        if (code.device_index() >= g_input.num_inputs)
+                            g_input.num_inputs = code.device_index()+1;
+                    }
+                }
+
+                // count the number of COIN buttons.
+                if (field.type() == IPT_SELECT && g_input.num_coins < 1)
+                    g_input.num_coins = 1;
+                if (field.type() == IPT_COIN1 && g_input.num_coins < 1)
+                    g_input.num_coins = 1;
+                if (field.type() == IPT_COIN2 && g_input.num_coins < 2)
+                    g_input.num_coins = 2;
+                if (field.type() == IPT_COIN3 && g_input.num_coins < 3)
+                    g_input.num_coins = 3;
+                if (field.type() == IPT_COIN4 && g_input.num_coins < 4)
+                    g_input.num_coins = 4;
+                
+                // count the number of players, by looking at the number of START buttons.
+                if (field.type() == IPT_START && g_input.num_players < 1)
+                    g_input.num_players = 1;
+                if (field.type() == IPT_START1 && g_input.num_players < 1)
+                    g_input.num_players = 1;
+                if (field.type() == IPT_START2 && g_input.num_players < 2)
+                    g_input.num_players = 2;
+                if (field.type() == IPT_START3 && g_input.num_players < 3)
+                    g_input.num_players = 3;
+                if (field.type() == IPT_START4 && g_input.num_players < 4)
+                    g_input.num_players = 4;
+                
+                if (field.player() != 0)
+                    continue;   // only count ways and buttons for Player 1
+                
+                // count the number of buttons
+                if(field.type() == IPT_BUTTON1)
+                    if(g_input.num_buttons<1)g_input.num_buttons=1;
+                if(field.type() == IPT_BUTTON2)
+                    if(g_input.num_buttons<2)g_input.num_buttons=2;
+                if(field.type() == IPT_BUTTON3)
+                    if(g_input.num_buttons<3)g_input.num_buttons=3;
+                if(field.type() == IPT_BUTTON4)
+                    if(g_input.num_buttons<4)g_input.num_buttons=4;
+                if(field.type() == IPT_BUTTON5)
+                    if(g_input.num_buttons<5)g_input.num_buttons=5;
+                if(field.type() == IPT_BUTTON6)
+                    if(g_input.num_buttons<6)g_input.num_buttons=6;
+                if(field.type() == IPT_JOYSTICKRIGHT_UP)//dual stick is mapped as buttons
+                    if(g_input.num_buttons<4)g_input.num_buttons=4;
+                if(field.type() == IPT_POSITIONAL)//positional is mapped with two last buttons
+                    if(g_input.num_buttons<6)g_input.num_buttons=6;
+                
+                // count the number of ways (joystick directions)
+                if(field.type() == IPT_JOYSTICK_UP || field.type() == IPT_JOYSTICK_DOWN || field.type() == IPT_JOYSTICKLEFT_UP || field.type() == IPT_JOYSTICKLEFT_DOWN)
+                    way8=1;
+                if(field.type() == IPT_AD_STICK_X || field.type() == IPT_LIGHTGUN_X || field.type() == IPT_MOUSE_X ||
+                   field.type() == IPT_TRACKBALL_X || field.type() == IPT_PEDAL)
+                    way8=1;
+                
+                // detect if mouse or lightgun input is wanted.
+                if(field.type() == IPT_DIAL   || field.type() == IPT_PADDLE   || field.type() == IPT_POSITIONAL   || field.type() == IPT_TRACKBALL_X ||
+                   field.type() == IPT_DIAL_V || field.type() == IPT_PADDLE_V || field.type() == IPT_POSITIONAL_V || field.type() == IPT_TRACKBALL_Y)
+                    g_input.num_mouse = 1;
+                if(field.type() == IPT_MOUSE_X)
+                    g_input.num_mouse = 1;
+                if(field.type() == IPT_LIGHTGUN_X)
+                    g_input.num_lightgun = 1;
+                if(field.type() == IPT_KEYBOARD || field.type() == IPT_KEYPAD)
+                    g_input.num_keyboard = 1;
+            }
+        }
+
+        // 8 if analog or lightgun or up or down
+        if (g_input.num_ways != 4) {
+            if (way8)
+                g_input.num_ways = 8;
+            else
+                g_input.num_ways = 2;
+        }
+    }
+    
+    osd_printf_debug("Num Buttons %d\n",g_input.num_buttons);
+    osd_printf_debug("Num WAYS %d\n",g_input.num_ways);
+    osd_printf_debug("Num PLAYERS %d\n",g_input.num_players);
+    osd_printf_debug("Num COINS %d\n",g_input.num_coins);
+    osd_printf_debug("Num INPUTS %d\n",g_input.num_inputs);
+    osd_printf_debug("Num MOUSE %d\n",g_input.num_mouse);
+    osd_printf_debug("Num GUN %d\n",g_input.num_lightgun);
+    osd_printf_debug("Num KEYBOARD %d\n",g_input.num_keyboard);
+}
+
+//============================================================
 //  update
 //============================================================
 void ios_osd_interface::input_update()
@@ -169,40 +315,42 @@ void ios_osd_interface::input_update()
     osd_printf_verbose("ios_osd_interface::input_update\n");
     
     // fill in the input profile the first time
-    if (g_input.num_players == 0)
-    {
-        // TODO: set these correctly!
-        g_input.num_players = 2;
-        g_input.num_coins = 2;
-        g_input.num_inputs = 2;
-        g_input.num_buttons = 4;
-        g_input.num_ways = 4;
-        g_input.num_mouse = 0;
-        g_input.num_lightgun = 0;
-        g_input.num_keyboard = 0;
-        // TODO: set these correctly!
+    if (g_input.num_ways == 0 && machine().ioport().safe_to_read()) {
+        
+        input_profile_init(machine());
         
         if (m_callbacks.input_init != NULL)
             m_callbacks.input_init(&g_input, sizeof(g_input));
     }
 
     bool in_menu = machine().phase() == machine_phase::RUNNING && machine().ui().is_menu_active();
+    bool ui_active = machine().ui_active();
 
-    // set the current input mode(s)
-    g_input.input_mode = in_menu ? MYOSD_INPUT_MODE_UI : MYOSD_INPUT_MODE_NORMAL;
-    g_input.keyboard_mode = MYOSD_KEYBOARD_MODE_NORMAL;
+    // set the current input mode
+    g_input.input_mode = in_menu ? MYOSD_INPUT_MODE_MENU : (ui_active ? MYOSD_INPUT_MODE_NORMAL : MYOSD_INPUT_MODE_KEYBOARD);
 
     // and call host
     if (m_callbacks.input_poll != NULL)
         m_callbacks.input_poll(&g_input, sizeof(g_input));
     
-    //poll_inputs(machine());
-    //check_osd_inputs(machine());
+    // see if host requested an exit or reset
+    if (g_input.keyboard[MYOSD_KEY_EXIT] != 0 && !machine().exit_pending())
+        machine().schedule_exit();
+    
+    if (g_input.keyboard[MYOSD_KEY_RESET] != 0 && !machine().hard_reset_pending())
+        machine().schedule_hard_reset();
 }
 
 //============================================================
 //  customize_input_type_list
 //============================================================
+
+// joystick D-Pad
+#define JOYCODE_HATUP(n)    input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1UP)
+#define JOYCODE_HATDOWN(n)  input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1DOWN)
+#define JOYCODE_HATLEFT(n)  input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1LEFT)
+#define JOYCODE_HATRIGHT(n) input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1RIGHT)
+
 void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> &typelist)
 {
     // This function is called on startup, before reading the
@@ -212,8 +360,13 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
     
     //!!! OSDOPTION_UIMODEKEY
 
+    //osd_printf_debug("INPUT TYPE LIST\n");
+
     // loop over the defaults
-    for (input_type_entry &entry : typelist)
+    for (input_type_entry &entry : typelist) {
+        
+        //osd_printf_debug("  %s TYPE:%d PLAYER:%d\n", entry.name() ?: "", entry.type(), entry.player());
+        
         switch (entry.type())
         {
             /*
@@ -227,11 +380,50 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
                 entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_ESC, input_seq::or_code, JOYCODE_SELECT, JOYCODE_START);
                 break;
             */
+                    
+            // make sure MYOSD_KEY_UIMODE is set right.
+            case IPT_UI_TOGGLE_UI:
+                _Static_assert(MYOSD_KEY_UIMODE == MYOSD_KEY_SCRLOCK, "");
+                entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_SCRLOCK);
+                break;
                 
-            // leave everything else alone
+            // allow the DPAD to move the UI
+            case IPT_UI_UP:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATUP(0);
+                break;
+            case IPT_UI_DOWN:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATDOWN(0);
+                break;
+            case IPT_UI_LEFT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATLEFT(0);
+                break;
+            case IPT_UI_RIGHT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATRIGHT(0);
+                break;
+                
+            /* these are mostly the same as MAME defaults, except we add dpad to them */
+            case IPT_JOYSTICK_UP:
+            case IPT_JOYSTICKLEFT_UP:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATUP(entry.player());
+                break;
+            case IPT_JOYSTICK_DOWN:
+            case IPT_JOYSTICKLEFT_DOWN:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATDOWN(entry.player());
+                break;
+            case IPT_JOYSTICK_LEFT:
+            case IPT_JOYSTICKLEFT_LEFT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATLEFT(entry.player());
+                break;
+            case IPT_JOYSTICK_RIGHT:
+            case IPT_JOYSTICKLEFT_RIGHT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATRIGHT(entry.player());
+                break;
+
+                // leave everything else alone
             default:
                 break;
         }
+    }
 }
 
 //============================================================
