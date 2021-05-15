@@ -10,9 +10,7 @@
 #include "osdwindow.h"
 
 #include "render/drawnone.h"
-#if (USE_BGFX)
 #include "render/drawbgfx.h"
-#endif
 #if (USE_OPENGL)
 #include "render/drawogl.h"
 #endif
@@ -22,8 +20,6 @@
 #elif defined(OSD_SDL)
 #include "render/draw13.h"
 #include "render/drawsdl.h"
-#elif defined(OSD_IOS)
-#include "render/drawios.h"
 #endif
 
 osd_window::osd_window(running_machine &machine, int index, std::shared_ptr<osd_monitor_info> monitor, const osd_window_config &config) :
@@ -69,10 +65,8 @@ std::unique_ptr<osd_renderer> osd_renderer::make_for_type(int mode, std::shared_
 		case VIDEO_MODE_NONE:
 			return std::make_unique<renderer_none>(window);
 #endif
-#if (USE_BGFX)
 		case VIDEO_MODE_BGFX:
 			return std::make_unique<renderer_bgfx>(window);
-#endif
 #if (USE_OPENGL)
 		case VIDEO_MODE_OPENGL:
 			return std::make_unique<renderer_ogl>(window);
@@ -87,9 +81,6 @@ std::unique_ptr<osd_renderer> osd_renderer::make_for_type(int mode, std::shared_
 			return std::make_unique<renderer_sdl2>(window, extra_flags);
 		case VIDEO_MODE_SOFT:
 			return std::make_unique<renderer_sdl1>(window, extra_flags);
-#elif defined(OSD_IOS)
-        case VIDEO_MODE_SOFT:
-            return std::make_unique<renderer_ios>(window);
 #endif
 		default:
 			return nullptr;
