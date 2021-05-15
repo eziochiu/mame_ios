@@ -171,7 +171,7 @@ void input_profile_init(running_machine &machine)
     if (machine.ioport().ports().size() == 0)
     {
         // default empty machine
-        g_input.num_players = 1;
+        g_input.num_players = 0;
         g_input.num_coins = 0;
         g_input.num_inputs = 1;
         g_input.num_ways = 4;
