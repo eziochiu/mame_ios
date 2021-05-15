@@ -11,16 +11,11 @@
 ---------------------------------------------------------------------------
 
 _OPTIONS["NO_OPENGL"] = "1"
-_OPTIONS["NO_BGFX"] = "1"
 _OPTIONS["USE_PCAP"] = "0"
 _OPTIONS["USE_TAPTUN"] = "0"
 _OPTIONS["USE_QTDEBUG"] = "0"
 _OPTIONS["NO_USE_MIDI"] = "1"
 _OPTIONS["NO_USE_PORTAUDIO"] = "1"
---_OPTIONS["FORCE_DRC_C_BACKEND"] = "1"
---_OPTIONS["NOASM"] = "0"
---_OPTIONS["with-system-zlib"] = "1"
---_OPTIONS["with-system-sqlite3"] = "0"
 
 dofile("modules.lua")
 
