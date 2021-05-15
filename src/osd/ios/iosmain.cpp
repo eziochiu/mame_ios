@@ -412,7 +412,21 @@ void ios_osd_interface::machine_exit()
     sound_exit();
 }
 
+//============================================================
+//  osd_setup_osd_specific_emu_options
+//============================================================
+
 void osd_setup_osd_specific_emu_options(emu_options &opts)
 {
     opts.add_entries(s_option_entries);
 }
+
+//============================================================
+//  osd_get_clipboard_text
+//============================================================
+
+std::string osd_get_clipboard_text(void)
+{
+    return std::string();
+}
+

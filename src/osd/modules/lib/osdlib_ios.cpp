@@ -90,6 +90,7 @@ void osd_break_into_debugger(const char *message)
 #endif
 }
 
+/* moved to iosmain.cpp
 //============================================================
 //  osd_get_clipboard_text
 //============================================================
@@ -98,7 +99,7 @@ std::string osd_get_clipboard_text(void)
 {
     return std::string();
 }
-
+*/
 
 //============================================================
 //  osd_getpid
