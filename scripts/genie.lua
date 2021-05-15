@@ -693,7 +693,7 @@ else
 	defines {
 		"LSB_FIRST",
 	}
-	if _OPTIONS["targetos"]=="macosx" then
+	if _OPTIONS["targetos"]=="macosx" and not (_OPTIONS["ARCHOPTS"] or ""):find("-arch") then
 		configuration { "arm64" }
 			buildoptions {
 				"-arch arm64",
