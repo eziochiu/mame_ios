@@ -102,8 +102,8 @@ project ("ocore_" .. _OPTIONS["osd"])
 		MAME_DIR .. "src/osd/strconv.h",
 		MAME_DIR .. "src/osd/osdsync.cpp",
 		MAME_DIR .. "src/osd/osdsync.h",
-		MAME_DIR .. "src/osd/modules/osdmodule.cpp",
-		MAME_DIR .. "src/osd/modules/osdmodule.h",
+--		MAME_DIR .. "src/osd/modules/osdmodule.cpp",
+--		MAME_DIR .. "src/osd/modules/osdmodule.h",
         MAME_DIR .. "src/osd/modules/lib/osdlib_ios.cpp",
 		MAME_DIR .. "src/osd/modules/lib/osdlib.h",
         MAME_DIR .. "src/osd/modules/file/posixdir.cpp",
@@ -127,4 +127,11 @@ project ("qtdbg_" .. _OPTIONS["osd"])
         MAME_DIR .. "3rdparty",
     }
     --qtdebuggerbuild()
+     files {
+        MAME_DIR .. "src/osd/modules/debugger/debugqt.cpp",
+    }
+    defines {
+        "USE_QTDEBUG=0",
+    }
+
 

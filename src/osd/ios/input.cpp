@@ -283,7 +283,7 @@ void input_profile_init(running_machine &machine)
                     g_input.num_mouse = 1;
                 if(field.type() == IPT_LIGHTGUN_X)
                     g_input.num_lightgun = 1;
-                if(field.type() == IPT_KEYBOARD || field.type() == IPT_KEYPAD)
+                if(field.type() == IPT_KEYBOARD)
                     g_input.num_keyboard = 1;
             }
         }
@@ -324,10 +324,13 @@ void ios_osd_interface::input_update()
     }
 
     bool in_menu = machine().phase() == machine_phase::RUNNING && machine().ui().is_menu_active();
-    bool ui_active = machine().ui_active();
+
+    // determine if we should disable the rest of the UI
+    bool has_keyboard = g_input.num_keyboard != 0; // machine_info().has_keyboard();
+    bool ui_disabled = (has_keyboard && !machine().ui_active());
 
     // set the current input mode
-    g_input.input_mode = in_menu ? MYOSD_INPUT_MODE_MENU : (ui_active ? MYOSD_INPUT_MODE_NORMAL : MYOSD_INPUT_MODE_KEYBOARD);
+    g_input.input_mode = in_menu ? MYOSD_INPUT_MODE_MENU : (ui_disabled ? MYOSD_INPUT_MODE_KEYBOARD : MYOSD_INPUT_MODE_NORMAL);
 
     // and call host
     if (m_callbacks.input_poll != NULL)
