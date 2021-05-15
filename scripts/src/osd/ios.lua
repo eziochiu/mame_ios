@@ -61,12 +61,7 @@ project ("osd_" .. _OPTIONS["osd"])
         MAME_DIR .. "src/osd/ios/video.cpp",
         MAME_DIR .. "src/osd/ios/sound.cpp",
         MAME_DIR .. "src/osd/ios/input.cpp",
---		MAME_DIR .. "src/osd/ios/window.cpp",
---		MAME_DIR .. "src/osd/ios/window.h",
---		MAME_DIR .. "src/osd/modules/osdwindow.cpp",
---		MAME_DIR .. "src/osd/modules/osdwindow.h",
---      MAME_DIR .. "src/osd/modules/render/drawios.cpp",
---      MAME_DIR .. "src/osd/modules/sound/ios_sound.cpp",
+        MAME_DIR .. "src/osd/ios/paste.mm",
 	}
 
 project ("ocore_" .. _OPTIONS["osd"])

@@ -385,9 +385,13 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
             // make sure MYOSD_KEY_UIMODE is set right.
             case IPT_UI_TOGGLE_UI:
                 _Static_assert(MYOSD_KEY_UIMODE == MYOSD_KEY_SCRLOCK, "");
-                entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_SCRLOCK);
+                entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_SCRLOCK, input_seq::not_code, KEYCODE_LSHIFT);
                 break;
                 
+            case IPT_UI_PASTE:
+                entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_SCRLOCK, KEYCODE_LSHIFT);
+                break;
+
             // allow the DPAD to move the UI
             case IPT_UI_UP:
                 entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATUP(0);
