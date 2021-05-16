@@ -44,13 +44,13 @@ project ("osd_" .. _OPTIONS["osd"])
  
 	includedirs {
 		MAME_DIR .. "src/emu",
-		MAME_DIR .. "src/devices", -- accessing imagedev from debugger
+--		MAME_DIR .. "src/devices", -- accessing imagedev from debugger
 		MAME_DIR .. "src/osd",
 		MAME_DIR .. "src/lib",
 		MAME_DIR .. "src/lib/util",
-		MAME_DIR .. "src/osd/modules/file",
-		MAME_DIR .. "src/osd/modules/render",
-		MAME_DIR .. "3rdparty",
+--		MAME_DIR .. "src/osd/modules/file",
+--		MAME_DIR .. "src/osd/modules/render",
+--		MAME_DIR .. "3rdparty",
 		MAME_DIR .. "src/osd/ios",
 	}
 
@@ -61,6 +61,7 @@ project ("osd_" .. _OPTIONS["osd"])
         MAME_DIR .. "src/osd/ios/video.cpp",
         MAME_DIR .. "src/osd/ios/sound.cpp",
         MAME_DIR .. "src/osd/ios/input.cpp",
+        MAME_DIR .. "src/osd/ios/osdlib.cpp",
         MAME_DIR .. "src/osd/ios/paste.mm",
 	}
 
@@ -99,8 +100,8 @@ project ("ocore_" .. _OPTIONS["osd"])
 		MAME_DIR .. "src/osd/osdsync.h",
 --		MAME_DIR .. "src/osd/modules/osdmodule.cpp",
 --		MAME_DIR .. "src/osd/modules/osdmodule.h",
-        MAME_DIR .. "src/osd/modules/lib/osdlib_ios.cpp",
-		MAME_DIR .. "src/osd/modules/lib/osdlib.h",
+--      MAME_DIR .. "src/osd/modules/lib/osdlib_ios.cpp",
+--		MAME_DIR .. "src/osd/modules/lib/osdlib.h",
         MAME_DIR .. "src/osd/modules/file/posixdir.cpp",
         MAME_DIR .. "src/osd/modules/file/posixdomain.cpp",
         MAME_DIR .. "src/osd/modules/file/posixfile.cpp",

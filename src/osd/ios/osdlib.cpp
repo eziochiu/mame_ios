@@ -2,7 +2,7 @@
 // copyright-holders:Olivier Galibert, R. Belmont
 //============================================================
 //
-//  sdlos_*.c - OS specific low level code
+//  osdlib - OS specific low level code, for iOS
 //
 //  SDLMAME by Olivier Galibert and R. Belmont
 //
@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 // MAME headers
-#include "osdlib.h"
+#include "modules/lib/osdlib.h"
 #include "osdcomm.h"
 #include "osdcore.h"
 #include "strconv.h"
@@ -90,7 +90,7 @@ void osd_break_into_debugger(const char *message)
 #endif
 }
 
-/* moved to iosmain.cpp
+/* moved to paste.mm
 //============================================================
 //  osd_get_clipboard_text
 //============================================================
@@ -115,6 +115,7 @@ int osd_getpid(void)
 //============================================================
 namespace osd {
 
+#if !defined(OSD_IOS)
 namespace {
 
 class dynamic_module_posix_impl : public dynamic_module
@@ -169,11 +170,19 @@ private:
 };
 } // anonymous namespace
 
+dynamic_module::ptr dynamic_module::open(std::vector<std::string> &&names)
+{
+    return std::make_unique<dynamic_module_posix_impl>(std::move(names));
+}
+#endif
+
 bool invalidate_instruction_cache(void const *start, std::size_t size)
 {
-//    char const *const begin(reinterpret_cast<char const *>(start));
-//    char const *const end(begin + size);
-//    __builtin___clear_cache(const_cast<char *>(begin), const_cast<char *>(end))
+#if !defined(OSD_IOS)
+    char const *const begin(reinterpret_cast<char const *>(start));
+    char const *const end(begin + size);
+    __builtin___clear_cache(const_cast<char *>(begin), const_cast<char *>(end))
+#endif
     return true;
 }
 
@@ -188,7 +197,7 @@ void *virtual_memory_allocation::do_alloc(std::initializer_list<std::size_t> blo
     s *= p;
     if (!s)
         return nullptr;
-#if defined(SDLMAME_BSD) || defined(SDLMAME_MACOSX) || defined(SDLMAME_EMSCRIPTEN)
+#if defined(OSD_IOS) || defined(SDLMAME_BSD) || defined(SDLMAME_MACOSX) || defined(SDLMAME_EMSCRIPTEN)
     int const fd(-1);
 #else
     // TODO: portable applications are supposed to use -1 for anonymous mappings - detect whatever requires 0 specifically
@@ -217,11 +226,6 @@ bool virtual_memory_allocation::do_set_access(void *start, std::size_t size, uns
     if (access & EXECUTE)
         prot |= PROT_EXEC;
     return mprotect(reinterpret_cast<char *>(start), size, prot) == 0;
-}
-
-dynamic_module::ptr dynamic_module::open(std::vector<std::string> &&names)
-{
-    return std::make_unique<dynamic_module_posix_impl>(std::move(names));
 }
 
 } // namespace osd
