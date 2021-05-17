@@ -224,8 +224,6 @@ void input_profile_init(running_machine &machine)
                 }
 
                 // count the number of COIN buttons.
-                if (field.type() == IPT_SELECT && g_input.num_coins < 1)
-                    g_input.num_coins = 1;
                 if (field.type() == IPT_COIN1 && g_input.num_coins < 1)
                     g_input.num_coins = 1;
                 if (field.type() == IPT_COIN2 && g_input.num_coins < 2)
@@ -234,10 +232,10 @@ void input_profile_init(running_machine &machine)
                     g_input.num_coins = 3;
                 if (field.type() == IPT_COIN4 && g_input.num_coins < 4)
                     g_input.num_coins = 4;
-                
+                if (field.type() == IPT_SELECT && g_input.num_coins < field.player()+1)
+                    g_input.num_coins = field.player()+1;
+
                 // count the number of players, by looking at the number of START buttons.
-                if (field.type() == IPT_START && g_input.num_players < 1)
-                    g_input.num_players = 1;
                 if (field.type() == IPT_START1 && g_input.num_players < 1)
                     g_input.num_players = 1;
                 if (field.type() == IPT_START2 && g_input.num_players < 2)
@@ -246,7 +244,9 @@ void input_profile_init(running_machine &machine)
                     g_input.num_players = 3;
                 if (field.type() == IPT_START4 && g_input.num_players < 4)
                     g_input.num_players = 4;
-                
+                if (field.type() == IPT_START && g_input.num_players < field.player()+1)
+                    g_input.num_players = field.player()+1;
+
                 if (field.player() != 0)
                     continue;   // only count ways and buttons for Player 1
                 
