@@ -405,7 +405,15 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
             case IPT_UI_RIGHT:
                 entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATRIGHT(0);
                 break;
-                
+
+            /* allow L1 and R1 to move pages in MAME UI */
+            case IPT_UI_PAGE_UP:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON5;
+                break;
+            case IPT_UI_PAGE_DOWN:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON6;
+                break;
+
             /* these are mostly the same as MAME defaults, except we add dpad to them */
             case IPT_JOYSTICK_UP:
             case IPT_JOYSTICKLEFT_UP:

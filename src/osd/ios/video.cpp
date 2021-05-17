@@ -92,7 +92,7 @@ static void convert_prim(myosd_render_primitive &myosd_prim, const render_primit
     myosd_prim.texwrap   = PRIMFLAG_GET_TEXWRAP(prim.flags);
     myosd_prim.unused    = 0;
     
-    // TODO: what are these
+    // TODO: what are these?
     PRIMFLAG_GET_TEXSHADE(prim.flags);
     PRIMFLAG_GET_VECTOR(prim.flags);
     PRIMFLAG_GET_VECTORBUF(prim.flags);
@@ -104,8 +104,10 @@ static void convert_prim(myosd_render_primitive &myosd_prim, const render_primit
     myosd_prim.texture_height = prim.texture.height;
     myosd_prim.texture_palette = prim.texture.palette;
     myosd_prim.texture_seqid = prim.texture.seqid;
-    // TODO: support unique_id??
+    
+    // TODO: what is unique_id?? how is it different from seqid?
     prim.texture.unique_id;
+    
     myosd_prim.texcoords[0].u = prim.texcoords.tl.u;
     myosd_prim.texcoords[0].v = prim.texcoords.tl.v;
     myosd_prim.texcoords[1].u = prim.texcoords.tr.u;
@@ -131,17 +133,8 @@ void ios_osd_interface::update(bool skip_redraw)
     int vis_width, vis_height;
     int min_width, min_height;
     target()->compute_minimum_size(min_width, min_height);
-    
-    bool in_menu = machine().phase() == machine_phase::RUNNING && machine().ui().is_menu_active();
-    bool has_art = target()->current_view().has_art();
-    
-    // if the current view has artwork, or a menu we want to use the largest target we can, to fit the display
-    // ...otherwise use the minimal buffer size needed, so it gets scaled up by hardware.
-    if (has_art || in_menu)
-        target()->compute_visible_area(MAX(640,myosd_display_width), MAX(480,myosd_display_height), 1.0, target()->orientation(), vis_width, vis_height);
-    else
-        target()->compute_visible_area(MAX(min_width,min_height), MAX(min_width,min_height), 1.0, target()->orientation(), vis_width, vis_height);
-    
+    target()->compute_visible_area(MAX(640,myosd_display_width), MAX(480,myosd_display_height), 1.0, target()->orientation(), vis_width, vis_height);
+     
     // check for a change in the min-size of render target *or* size of the vis screen
     if (min_width != m_min_width || min_height != m_min_height ||
         vis_width != m_vis_width || vis_height != m_vis_height) {
