@@ -26,7 +26,8 @@ DEFINE_DEVICE_TYPE(NAMCOS2_SPRITE, namcos2_sprite_device, "namcos2_sprite", "Nam
 namcos2_sprite_device::namcos2_sprite_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock) :
 	device_t(mconfig, NAMCOS2_SPRITE, tag, owner, clock),
 	m_gfxdecode(*this, finder_base::DUMMY_TAG),
-	m_spriteram(*this, finder_base::DUMMY_TAG)
+	m_spriteram(*this, finder_base::DUMMY_TAG),
+	m_force_32x32(false)
 {
 }
 
@@ -50,7 +51,6 @@ void namcos2_sprite_device::zdrawgfxzoom(
 		if (gfx)
 		{
 			device_palette_interface &palette = gfx->palette();
-			const int shadow_offset = (palette.shadows_enabled()) ? palette.entries() : 0;
 			const pen_t *pal = &palette.pen(gfx->colorbase() + gfx->granularity() * (color % gfx->colors()));
 			const u8 *source_base = gfx->get_data(code % gfx->elements());
 			const int sprite_screen_height = (scaley * gfx->height() + 0x8000) >> 16;
@@ -160,9 +160,9 @@ void namcos2_sprite_device::zdrawgfxzoom(
 									{
 										if (pri[x] <= zpos)
 										{
-											if (color == 0xf && c==0xfe && shadow_offset)
+											if (color == 0xf && c == 0xfe)
 											{
-												dest[x] |= shadow_offset;
+												dest[x] |= 0x800;
 											}
 											else
 											{
@@ -230,8 +230,16 @@ void namcos2_sprite_device::draw_sprites(screen_device &screen, bitmap_ind16 &bi
 
 			const int sizey = ((word0 >> 10) & 0x003f) + 1;
 			int sizex       =  (word3 >> 10) & 0x003f;
+			int is_32       =  (word0 >> 9)  & 0x0001;
 
-			if ((word0 & 0x0200) == 0) sizex >>= 1;
+			// The finallap title screen needs 32x32 sprites, but doesn't set the expected bit
+			// other games (eg. mirninja) do correctly set it.
+			//
+			// can the 16x16 support be disabled globally with a register, or via a pin on the chip?
+			if (m_force_32x32)
+				is_32 = 1;
+
+			if (!is_32) sizex >>= 1;
 
 			if ((sizey - 1) && sizex)
 			{
@@ -241,13 +249,13 @@ void namcos2_sprite_device::draw_sprites(screen_device &screen, bitmap_ind16 &bi
 				const int xpos   = (offset4 & 0x03ff) - 0x50 + 0x07;
 				const bool flipy = word1 & 0x8000;
 				const bool flipx = word1 & 0x4000;
-				const int scalex = (sizex << 16) / ((word0 & 0x0200) ? 0x20 : 0x10);
-				const int scaley = (sizey << 16) / ((word0 & 0x0200) ? 0x20 : 0x10);
+				const int scalex = (sizex << 16) / (is_32 ? 0x20 : 0x10);
+				const int scaley = (sizey << 16) / (is_32 ? 0x20 : 0x10);
 				if (scalex && scaley)
 				{
 					gfx_element *gfx = m_gfxdecode->gfx(0);
 
-					if ((word0 & 0x0200) == 0)
+					if (!is_32)
 						gfx->set_source_clip((word1 & 0x0001) ? 16 : 0, 16, (word1 & 0x0002) ? 16 : 0, 16);
 					else
 						gfx->set_source_clip(0, 32, 0, 32);
