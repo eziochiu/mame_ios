@@ -56,6 +56,8 @@ protected:
 	virtual void update_keyboard_input(uint8_t value) override;
 	virtual void cart_w(bool line) override;
 
+	uint8_t m_pia1b_control_register;
+
 private:
 	required_device<gime_device> m_gime;
 	required_ioport m_screen_config;

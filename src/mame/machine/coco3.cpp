@@ -54,8 +54,8 @@ void coco3_state::ff20_write(offs_t offset, uint8_t data)
 {
 	coco_state::ff20_write(offset, data);
 
-	if (offset == 0x02)
-		m_gime->ff22_write(data);
+	/* The GIME monitors writes to the PIA to simulate a VDG */
+	m_gime->pia_write(offset, data);
 }
 
 
