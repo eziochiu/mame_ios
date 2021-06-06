@@ -1077,7 +1077,8 @@ function toolchain(_buildDir, _subDir)
 	configuration { "osx*", "arm64" }
 		objdir (_buildDir .. "osx_clang" .. "/obj")
 		buildoptions {
-			"-m64", "-DHAVE_IMMINTRIN_H=0", "-DSDL_DISABLE_IMMINTRIN_H=1", "-DHAVE_SSE=0"
+--          "-m64", "-DHAVE_IMMINTRIN_H=0", "-DSDL_DISABLE_IMMINTRIN_H=1", "-DHAVE_SSE=0"
+            "-m64", "-DHAVE_IMMINTRIN_H=1",
 		}
 
 	configuration { "osx*", "arm64", "Release" }
