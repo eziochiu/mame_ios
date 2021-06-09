@@ -420,3 +420,59 @@ void osd_setup_osd_specific_emu_options(emu_options &opts)
 {
     opts.add_entries(s_option_entries);
 }
+
+//============================================================
+//  myosd_enumerate_7z
+//  give the host the ability to enumerate the file names in a 7z file
+//  ...and maybe someday the data too
+//============================================================
+
+#include "lzma/C/7z.h"
+#include "lzma/C/7zFile.h"
+#include "lzma/C/7zCrc.h"
+#include "lzma/C/7zAlloc.h"
+
+// enumerate the files (and optionaly the data) in a 7Z archive, return 0 on success
+extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* callback_ptr, void (*callback)(void* callback_ptr, const uint16_t* name, size_t len, const uint8_t* data, size_t size))
+{
+    CSzArEx db;
+    CFileInStream archiveStream;
+    CLookToRead lookStream;
+    ISzAlloc alloc = {SzAlloc, SzFree};
+    ISzAlloc alloc_temp = {SzAllocTemp, SzFreeTemp};
+    
+    // we *ONLY* support enumerating the names, not loading the data.
+    if (load_data_flag != 0)
+        return -1;
+
+    if (InFile_Open(&archiveStream.file, path) != 0)
+        return -1;
+    
+    FileInStream_CreateVTable(&archiveStream);
+    LookToRead_CreateVTable(&lookStream, False);
+    
+    lookStream.realStream = &archiveStream.s;
+    LookToRead_Init(&lookStream);
+
+    if (g_CrcTable[1] == 0)
+        CrcGenerateTable(); // *YES* this is needed!!
+
+    SzArEx_Init(&db);
+    int err = SzArEx_Open(&db, &lookStream.s, &alloc, &alloc_temp);
+    if (err == 0) {
+        for (int i = 0; i < db.NumFiles; i++) {
+            uint16_t name[512];
+            size_t len = SzArEx_GetFileNameUtf16(&db, i, NULL);
+            if (len < sizeof(name)/sizeof(name[0])) {
+                len = SzArEx_GetFileNameUtf16(&db, i, name);
+                callback(callback_ptr, name, len, NULL, 0);
+            }
+        }
+    }
+    SzArEx_Free(&db, &alloc);
+    File_Close(&archiveStream.file);
+    
+    return err;
+}
+
+
