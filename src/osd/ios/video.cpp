@@ -27,6 +27,8 @@ void ios_osd_interface::video_init()
 
     // create our *single* render target, we dont do multiple windows or monitors
     m_target = machine().render().target_alloc();
+    
+    m_video_none = strcmp(options().value(OPTION_VIDEO), "none") == 0;
 
     m_min_width = 0;
     m_min_height = 0;
@@ -127,7 +129,7 @@ void ios_osd_interface::update(bool skip_redraw)
     osd_printf_verbose("ios_osd_interface::update\n");
 
     // if skipping this redraw, bail
-    if (skip_redraw || m_callbacks.video_draw == NULL)
+    if (skip_redraw || m_callbacks.video_draw == NULL || m_video_none)
         return;
     
     int vis_width, vis_height;

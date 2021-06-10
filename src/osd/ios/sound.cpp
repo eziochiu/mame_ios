@@ -30,13 +30,16 @@ void ios_osd_interface::sound_init()
         m_callbacks.sound_play = myosd_sound_play;
         m_callbacks.sound_exit = myosd_sound_exit;
     }
-    
+
     m_sample_rate = options().sample_rate();
+
+    if (strcmp(options().value(OPTION_SOUND), "none") == 0)
+        m_sample_rate = 0;
+    
     if (m_sample_rate != 0)
     {
         // set the startup volume
         set_mastervolume(0);
-
         m_callbacks.sound_init(m_sample_rate, 1);
     }
 }
@@ -106,7 +109,7 @@ void ios_osd_interface::set_mastervolume(int attenuation)
 
 bool ios_osd_interface::no_sound()
 {
-    return false;
+    return m_sample_rate == 0;
 }
 
 //============================================================

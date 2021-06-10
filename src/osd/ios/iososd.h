@@ -113,7 +113,8 @@ private:
     render_target * m_target;
     int m_min_width, m_min_height;
     int m_vis_width, m_vis_height;
-    
+    int m_video_none;
+
     // audio
     int m_attenuation;
     int m_sample_rate;
