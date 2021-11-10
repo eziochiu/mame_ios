@@ -50,9 +50,10 @@
 
 #include "ui/uimain.h"
 
-#include "xmlfile.h"
-
-#include <zlib.h>
+#include "util/ioprocsfilter.h"
+#include "util/language.h"
+#include "util/path.h"
+#include "util/xmlfile.h"
 
 #include <algorithm>
 
@@ -899,7 +900,11 @@ template <typename T> render_target::render_target(render_manager &manager, T &&
 	, m_listindex(0)
 	, m_width(640)
 	, m_height(480)
+	, m_keepaspect(false)
+	, m_int_overscan(false)
 	, m_pixel_aspect(0.0f)
+	, m_int_scale_x(0)
+	, m_int_scale_y(0)
 	, m_max_refresh(0)
 	, m_orientation(0)
 	, m_base_view(nullptr)
@@ -913,20 +918,25 @@ template <typename T> render_target::render_target(render_manager &manager, T &&
 	m_base_layerconfig.set_zoom_to_screen(manager.machine().options().artwork_crop());
 
 	// aspect and scale options
-	m_keepaspect = (manager.machine().options().keep_aspect() && !(flags & RENDER_CREATE_HIDDEN));
-	m_int_overscan = manager.machine().options().int_overscan();
-	m_int_scale_x = manager.machine().options().int_scale_x();
-	m_int_scale_y = manager.machine().options().int_scale_y();
-	if (m_manager.machine().options().auto_stretch_xy())
-		m_scale_mode = SCALE_FRACTIONAL_AUTO;
-	else if (manager.machine().options().uneven_stretch_x())
-		m_scale_mode = SCALE_FRACTIONAL_X;
-	else if (manager.machine().options().uneven_stretch_y())
-		m_scale_mode = SCALE_FRACTIONAL_Y;
-	else if (manager.machine().options().uneven_stretch())
-		m_scale_mode = SCALE_FRACTIONAL;
+	if (!(flags & RENDER_CREATE_HIDDEN))
+	{
+		m_keepaspect = manager.machine().options().keep_aspect();
+		m_int_overscan = manager.machine().options().int_overscan();
+		m_int_scale_x = manager.machine().options().int_scale_x();
+		m_int_scale_y = manager.machine().options().int_scale_y();
+		if (m_manager.machine().options().auto_stretch_xy())
+			m_scale_mode = SCALE_FRACTIONAL_AUTO;
+		else if (manager.machine().options().uneven_stretch_x())
+			m_scale_mode = SCALE_FRACTIONAL_X;
+		else if (manager.machine().options().uneven_stretch_y())
+			m_scale_mode = SCALE_FRACTIONAL_Y;
+		else if (manager.machine().options().uneven_stretch())
+			m_scale_mode = SCALE_FRACTIONAL;
+		else
+			m_scale_mode = SCALE_INTEGER;
+	}
 	else
-		m_scale_mode = SCALE_INTEGER;
+		m_scale_mode = SCALE_FRACTIONAL;
 
 	// determine the base orientation based on options
 	if (!manager.machine().options().rotate())
@@ -1684,6 +1694,8 @@ void render_target::load_layout_files(util::xml::data_node const &rootnode, bool
 
 void render_target::load_additional_layout_files(const char *basename, bool have_artwork)
 {
+	using util::lang_translate;
+
 	m_external_artwork = false;
 
 	// if override_artwork defined, load that and skip artwork other than default
@@ -1832,7 +1844,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 			viewnode->set_attribute(
 					"name",
 					util::string_format(
-						"Screen %1$u Standard (%2$u:%3$u)",
+						_("view-name", "Screen %1$u Standard (%2$u:%3$u)"),
 						i, screens[i].physical_x(), screens[i].physical_y()).c_str());
 			util::xml::data_node *const screennode(viewnode->add_child("screen", nullptr));
 			if (!screennode)
@@ -1858,7 +1870,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 				viewnode->set_attribute(
 						"name",
 						util::string_format(
-							"Screen %1$u Pixel Aspect (%2$u:%3$u)",
+							_("view-name", "Screen %1$u Pixel Aspect (%2$u:%3$u)"),
 							i, screens[i].native_x(), screens[i].native_y()).c_str());
 				util::xml::data_node *const screennode(viewnode->add_child("screen", nullptr));
 				if (!screennode)
@@ -1880,7 +1892,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 			util::xml::data_node *const viewnode(layoutnode->add_child("view", nullptr));
 			if (!viewnode)
 				throw emu_fatalerror("Couldn't create XML node??");
-			viewnode->set_attribute("name", "Cocktail");
+			viewnode->set_attribute("name", _("view-name", "Cocktail"));
 
 			util::xml::data_node *const mirrornode(viewnode->add_child("screen", nullptr));
 			if (!mirrornode)
@@ -2000,10 +2012,10 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 					};
 
 			// generate linear views
-			generate_view("Left-to-Right", screens.size(), false, [] (unsigned x, unsigned y) { return x; });
-			generate_view("Left-to-Right (Gapless)", screens.size(), true, [] (unsigned x, unsigned y) { return x; });
-			generate_view("Top-to-Bottom", 1U, false, [] (unsigned x, unsigned y) { return y; });
-			generate_view("Top-to-Bottom (Gapless)", 1U, true, [] (unsigned x, unsigned y) { return y; });
+			generate_view(_("view-name", "Left-to-Right"), screens.size(), false, [] (unsigned x, unsigned y) { return x; });
+			generate_view(_("view-name", "Left-to-Right (Gapless)"), screens.size(), true, [] (unsigned x, unsigned y) { return x; });
+			generate_view(_("view-name", "Top-to-Bottom"), 1U, false, [] (unsigned x, unsigned y) { return y; });
+			generate_view(_("view-name", "Top-to-Bottom (Gapless)"), 1U, true, [] (unsigned x, unsigned y) { return y; });
 
 			// generate fake cocktail view for systems with two screens
 			if (screens.size() == 2U)
@@ -2015,7 +2027,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 				util::xml::data_node *const viewnode(layoutnode->add_child("view", nullptr));
 				if (!viewnode)
 					throw emu_fatalerror("Couldn't create XML node??");
-				viewnode->set_attribute("name", "Cocktail");
+				viewnode->set_attribute("name", _("view-name", "Cocktail"));
 
 				util::xml::data_node *const mirrornode(viewnode->add_child("screen", nullptr));
 				if (!mirrornode)
@@ -2054,7 +2066,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 				if (!remainder || (((majdim + 1) / 2) <= remainder))
 				{
 					generate_view(
-							util::string_format("%1$u\xC3\x97%2$u Left-to-Right, Top-to-Bottom", majdim, mindim).c_str(),
+							util::string_format(_("view-name", u8"%1$u×%2$u Left-to-Right, Top-to-Bottom"), majdim, mindim).c_str(),
 							majdim,
 							false,
 							[&screens, majdim] (unsigned x, unsigned y)
@@ -2063,7 +2075,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 								return (screens.size() > i) ? int(i) : -1;
 							});
 					generate_view(
-							util::string_format("%1$u\xC3\x97%2$u Left-to-Right, Top-to-Bottom (Gapless)", majdim, mindim).c_str(),
+							util::string_format(_("view-name", u8"%1$u×%2$u Left-to-Right, Top-to-Bottom (Gapless)"), majdim, mindim).c_str(),
 							majdim,
 							true,
 							[&screens, majdim] (unsigned x, unsigned y)
@@ -2072,7 +2084,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 								return (screens.size() > i) ? int(i) : -1;
 							});
 					generate_view(
-							util::string_format("%1$u\xC3\x97%2$u Top-to-Bottom, Left-to-Right", mindim, majdim).c_str(),
+							util::string_format(_("view-name", u8"%1$u×%2$u Top-to-Bottom, Left-to-Right"), mindim, majdim).c_str(),
 							mindim,
 							false,
 							[&screens, majdim] (unsigned x, unsigned y)
@@ -2081,7 +2093,7 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 								return (screens.size() > i) ? int(i) : -1;
 							});
 					generate_view(
-							util::string_format("%1$u\xC3\x97%2$u Top-to-Bottom, Left-to-Right (Gapless)", mindim, majdim).c_str(),
+							util::string_format(_("view-name", u8"%1$u×%2$u Top-to-Bottom, Left-to-Right (Gapless)"), mindim, majdim).c_str(),
 							mindim,
 							true,
 							[&screens, majdim] (unsigned x, unsigned y)
@@ -2108,58 +2120,56 @@ void render_target::load_additional_layout_files(const char *basename, bool have
 bool render_target::load_layout_file(const char *dirname, const internal_layout &layout_data, device_t *device)
 {
 	// +1 to ensure data is terminated for XML parser
-	auto tempout = make_unique_clear<u8 []>(layout_data.decompressed_size + 1);
-
-	z_stream stream;
-	int zerr;
-
-	// initialize the stream
-	memset(&stream, 0, sizeof(stream));
-	stream.next_out = tempout.get();
-	stream.avail_out = layout_data.decompressed_size;
-
-	zerr = inflateInit(&stream);
-	if (zerr != Z_OK)
+	std::unique_ptr<u8 []> tempout(new (std::nothrow) u8 [layout_data.decompressed_size + 1]);
+	auto inflater(util::zlib_read(util::ram_read(layout_data.data, layout_data.compressed_size), 8192));
+	if (!tempout || !inflater)
 	{
-		osd_printf_error("render_target::load_layout_file: zlib initialization error\n");
+		osd_printf_error("render_target::load_layout_file: not enough memory to decompress layout\n");
 		return false;
 	}
 
-	// decompress this chunk
-	stream.next_in = (unsigned char *)layout_data.data;
-	stream.avail_in = layout_data.compressed_size;
-	zerr = inflate(&stream, Z_NO_FLUSH);
-
-	// stop at the end of the stream
-	if (zerr == Z_STREAM_END)
+	size_t decompressed = 0;
+	do
 	{
-		// OK
+		size_t actual;
+		std::error_condition const err = inflater->read(
+				&tempout[decompressed],
+				layout_data.decompressed_size - decompressed,
+				actual);
+		decompressed += actual;
+		if (err)
+		{
+			osd_printf_error(
+					"render_target::load_layout_file: error decompressing layout (%s:%d %s)\n",
+					err.category().name(),
+					err.value(),
+					err.message());
+			return false;
+		}
+		if (!actual && (layout_data.decompressed_size < decompressed))
+		{
+			osd_printf_warning(
+					"render_target::load_layout_file: expected %u bytes of decompressed data but only got %u\n",
+					layout_data.decompressed_size,
+					decompressed);
+			break;
+		}
 	}
-	else if (zerr != Z_OK)
-	{
-		osd_printf_error("render_target::load_layout_file: zlib decompression error\n");
-		inflateEnd(&stream);
-		return false;
-	}
+	while (layout_data.decompressed_size > decompressed);
+	inflater.reset();
 
-	// clean up
-	zerr = inflateEnd(&stream);
-	if (zerr != Z_OK)
-		osd_printf_error("render_target::load_layout_file: zlib cleanup error\n");
-
+	tempout[decompressed] = 0U;
 	util::xml::file::ptr rootnode(util::xml::file::string_read(reinterpret_cast<char const *>(tempout.get()), nullptr));
 	tempout.reset();
 
 	// if we didn't get a properly-formatted XML file, record a warning and exit
 	if (!load_layout_file(device ? *device : m_manager.machine().root_device(), *rootnode, m_manager.machine().options().art_path(), dirname))
 	{
-		osd_printf_warning("Improperly formatted XML string, ignoring\n");
+		osd_printf_warning("render_target::load_layout_file: Improperly formatted XML string, ignoring\n");
 		return false;
 	}
-	else
-	{
-		return true;
-	}
+
+	return true;
 }
 
 bool render_target::load_layout_file(const char *dirname, const char *filename)
@@ -2177,7 +2187,7 @@ bool render_target::load_layout_file(const char *dirname, const char *filename)
 	emu_file layoutfile(m_manager.machine().options().art_path(), OPEN_FLAG_READ);
 	layoutfile.set_restrict_to_mediapath(1);
 	bool result(false);
-	for (osd_file::error filerr = layoutfile.open(fname); osd_file::error::NONE == filerr; filerr = layoutfile.open_next())
+	for (std::error_condition filerr = layoutfile.open(fname); !filerr; filerr = layoutfile.open_next())
 	{
 		// read the file and parse as XML
 		util::xml::file::ptr const rootnode(util::xml::file::read(layoutfile, &parseopt));

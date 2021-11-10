@@ -10,7 +10,7 @@ known chips:
 
   serial  device   etc.
 ----------------------------------------------------------------
- *055     uPD546C  1979, Fidelity Checker Challenger (CR)
+  055     uPD546C  1978, Fidelity Checker Challenger (CR) -> fidel_checkc2.cpp
 
  @017     uPD552C  1979, Bambino UFO Master-Blaster Station (ET-02)
  @042     uPD552C  1980, Tomy Cosmic Combat (TN-??)
@@ -62,11 +62,15 @@ r = revision of the VFD
 c = custom display
 s = unique display part number
 
+============================================================================
 
 ROM source notes when dumped from another publisher, but confident it's the same:
 - astrocmd: Tandy Astro Command
 - caveman: Tandy Caveman
 - grobot9: Mego Fabulous Fred
+
+TODO:
+- get rid of hardcoded color overlay from SVGs, use MAME internal artwork
 
 ***************************************************************************/
 

@@ -210,16 +210,16 @@ UPD7220_DISPLAY_PIXELS_MEMBER( qx10_state::hgdc_display_pixels )
 {
 	rgb_t const *const palette = m_palette->palette()->entry_list_raw();
 	int gfx[3];
-	address &= 0x1ffff;
+	address &= 0xffff;
 	if(m_color_mode)
 	{
-		gfx[0] = m_video_ram[(address >> 1) + 0x00000];
-		gfx[1] = m_video_ram[(address >> 1) + 0x10000];
-		gfx[2] = m_video_ram[(address >> 1) + 0x20000];
+		gfx[0] = m_video_ram[address + 0x00000];
+		gfx[1] = m_video_ram[address + 0x10000];
+		gfx[2] = m_video_ram[address + 0x20000];
 	}
 	else
 	{
-		gfx[0] = m_video_ram[(address >> 1)];
+		gfx[0] = m_video_ram[address];
 		gfx[1] = 0;
 		gfx[2] = 0;
 	}
@@ -243,7 +243,7 @@ UPD7220_DISPLAY_PIXELS_MEMBER( qx10_state::hgdc_display_pixels )
 UPD7220_DRAW_TEXT_LINE_MEMBER( qx10_state::hgdc_draw_text )
 {
 	const rgb_t *palette = m_palette->palette()->entry_list_raw();
-	addr &= 0x1ffff;
+	addr &= 0xffff;
 
 	for (int x = 0; x < pitch; x++)
 	{
@@ -836,7 +836,7 @@ void qx10_state::vram_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 
 void qx10_state::upd7220_map(address_map &map)
 {
-	map(0x00000, 0x1ffff).rw(FUNC(qx10_state::vram_r), FUNC(qx10_state::vram_w)).mirror(0x20000);
+	map(0x0000, 0xffff).rw(FUNC(qx10_state::vram_r), FUNC(qx10_state::vram_w)).mirror(0x30000);
 }
 
 static void keyboard(device_slot_interface &device)
@@ -908,6 +908,7 @@ void qx10_state::qx10(machine_config &config)
 	m_scc->out_int_callback().set(FUNC(qx10_state::keyboard_irq));
 
 	AM9517A(config, m_dma_1, MAIN_CLK/4);
+	m_dma_1->dreq_active_low();
 	m_dma_1->out_hreq_callback().set(FUNC(qx10_state::dma_hrq_changed));
 	m_dma_1->out_eop_callback().set(FUNC(qx10_state::tc_w));
 	m_dma_1->in_memr_callback().set(FUNC(qx10_state::memory_read_byte));
@@ -916,7 +917,9 @@ void qx10_state::qx10(machine_config &config)
 	m_dma_1->in_ior_callback<1>().set(m_hgdc, FUNC(upd7220_device::dack_r));
 	m_dma_1->out_iow_callback<0>().set(m_fdc, FUNC(upd765a_device::dma_w));
 	m_dma_1->out_iow_callback<1>().set(m_hgdc, FUNC(upd7220_device::dack_w));
+
 	AM9517A(config, m_dma_2, MAIN_CLK/4);
+	m_dma_2->dreq_active_low();
 
 	I8255(config, m_ppi, 0);
 	m_ppi->out_pa_callback().set("prndata", FUNC(output_latch_device::write));
