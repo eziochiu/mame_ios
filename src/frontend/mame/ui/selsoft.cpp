@@ -397,7 +397,7 @@ menu_select_software::~menu_select_software()
 void menu_select_software::handle(event const *ev)
 {
 	if (m_prev_selected == nullptr)
-		m_prev_selected = item(0).ref;
+		m_prev_selected = item(0).ref();
 
 	// FIXME: everything above here used run before events were processed
 
@@ -741,7 +741,7 @@ void menu_select_software::filter_selected()
 						}
 					}
 					m_data->set_filter_type(new_type);
-					reset(reset_options::SELECT_FIRST);
+					reset(reset_options::REMEMBER_REF);
 				});
 	}
 }

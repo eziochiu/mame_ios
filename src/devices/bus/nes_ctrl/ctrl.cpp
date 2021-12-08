@@ -51,6 +51,7 @@
 #include "fcmat.h"
 #include "hori.h"
 #include "joypad.h"
+#include "konamibag.h"
 #include "konamihs.h"
 #include "miracle.h"
 #include "mjpanel.h"
@@ -202,8 +203,10 @@ void fc_expansion_devices(device_slot_interface &device)
 	device.option_add("arcstick", NES_ARCSTICK);
 	device.option_add("fc_keyboard", NES_FCKEYBOARD);
 	device.option_add("zapper", NES_ZAPPER);
+	device.option_add("bandaihs", NES_BANDAIHS);
 	device.option_add("vaus", NES_ARKPADDLE_FC);
 	device.option_add("family_trainer", NES_FTRAINER);
+	device.option_add("konamibag", NES_KONAMIBAG);
 	device.option_add("konamihs", NES_KONAMIHS);
 	device.option_add("konami_piano", NES_DOREPIANO);
 	device.option_add("mj_panel", NES_MJPANEL);
