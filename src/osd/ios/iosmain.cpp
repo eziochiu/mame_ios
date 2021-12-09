@@ -424,7 +424,7 @@ void osd_setup_osd_specific_emu_options(emu_options &opts)
 //============================================================
 //  myosd_enumerate_7z
 //  give the host the ability to enumerate the file names in a 7z file
-//  ...and maybe someday the data too
+//  ...and maybe the data too
 //============================================================
 
 #include "lzma/C/7z.h"
@@ -441,10 +441,6 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
     ISzAlloc alloc = {SzAlloc, SzFree};
     ISzAlloc alloc_temp = {SzAllocTemp, SzFreeTemp};
     
-    // we *ONLY* support enumerating the names, not loading the data.
-    if (load_data_flag != 0)
-        return -1;
-
     if (InFile_Open(&archiveStream.file, path) != 0)
         return -1;
     
@@ -460,14 +456,41 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
     SzArEx_Init(&db);
     int err = SzArEx_Open(&db, &lookStream.s, &alloc, &alloc_temp);
     if (err == 0) {
+
+        uint32_t blockIndex = 0xFFFFFFFF; /* it can have any value before first call (if outBuffer = 0) */
+        uint8_t *outBuffer = 0; /* it must be 0 before first call for each new archive. */
+        size_t outBufferSize = 0;  /* it can have any value before first call (if outBuffer = 0) */
+
         for (int i = 0; i < db.NumFiles; i++) {
             uint16_t name[512];
-            size_t len = SzArEx_GetFileNameUtf16(&db, i, NULL);
-            if (len < sizeof(name)/sizeof(name[0])) {
-                len = SzArEx_GetFileNameUtf16(&db, i, name);
-                callback(callback_ptr, name, len, NULL, 0);
+            size_t name_len = SzArEx_GetFileNameUtf16(&db, i, NULL);
+            
+            if (name_len == 0 || name_len >= sizeof(name)/sizeof(name[0]))
+                continue;
+
+            name_len = SzArEx_GetFileNameUtf16(&db, i, name);
+
+            uint8_t *data = NULL;
+            size_t data_len = 0;
+            
+            if (load_data_flag && !SzArEx_IsDir(&db, i)) {
+                size_t offset = 0;
+                size_t outSizeProcessed = 0;
+                
+                int res = SzArEx_Extract(&db, &lookStream.s, i,
+                    &blockIndex, &outBuffer, &outBufferSize,
+                    &offset, &outSizeProcessed,
+                    &alloc, &alloc_temp);
+                
+                if (res == 0) {
+                    data = outBuffer + offset;
+                    data_len = outSizeProcessed;
+                }
             }
+            
+            callback(callback_ptr, name, name_len, data, data_len);
         }
+        IAlloc_Free(&alloc, outBuffer);
     }
     SzArEx_Free(&db, &alloc);
     File_Close(&archiveStream.file);

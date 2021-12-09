@@ -22,7 +22,12 @@ export BUILDDIR=build-ios
 export ARCHOPTS="-arch arm64 -isysroot `xcodebuild -version -sdk iphoneos Path` -miphoneos-version-min=$VERSION_MIN"
 LIBMAME=libmame-ios
 
+if [ "$1" == "ios" ]; then
+    shift
+fi
+
 if [ "$1" == "ios-simulator" ]; then
+    LIBMAME=libmame-ios-simulator
     export BUILDDIR=build-ios-simulator
     export ARCHOPTS="-arch `uname -m` -isysroot `xcodebuild -version -sdk iphonesimulator Path` -mios-simulator-version-min=$VERSION_MIN"
     shift
@@ -37,7 +42,7 @@ if [ "$1" == "tvos" ] || [ "$1" == "tvOS" ]; then
 fi
 
 if [ "$1" == "tvos-simulator" ]; then
-    LIBMAME=libmame-tvos
+    LIBMAME=libmame-tvos-simulator
     export BUILDDIR=build-tvos-simulator
     export ARCHOPTS="-arch `uname -m` -isysroot `xcodebuild -version -sdk iphonesimulator Path` -mtvos-simulator-version-min=$VERSION_MIN"
     shift
@@ -91,8 +96,8 @@ export ARCHOPTS="$ARCHOPTS -fPIC"
 ## hack to get sqlite to build
 export ARCHOPTS="$ARCHOPTS -DHAVE_GETHOSTUUID=0"
 
-export FORCE_DRC_C_BACKEND=1
-export NOASM=1
+## export FORCE_DRC_C_BACKEND=1
+## export NOASM=1
 ## export REGENIE=1
 make OSD=ios -j`sysctl -n hw.logicalcpu` $@ || exit -1
 

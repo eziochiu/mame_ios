@@ -34,13 +34,13 @@ static int get_key(void *device, void *item)
 static int get_axis(void *device, void *item)
 {
     float value = *(float*)item;
-    return (int)(value * 32767 * 2);
+    return (int)(value * INPUT_ABSOLUTE_MAX);
 }
 
 static int get_axis_neg(void *device, void *item)
 {
     float value = *(float*)item;
-    return (int)(value * 32767 * -2);
+    return (int)(value * INPUT_ABSOLUTE_MAX * -1);
 }
 
 static int get_mouse(void *device, void *item)
@@ -67,6 +67,10 @@ void ios_osd_interface::input_init()
 {
     osd_printf_verbose("ios_osd_interface::input_init\n");
     
+    machine().input().device_class(DEVICE_CLASS_JOYSTICK).enable(true);
+    machine().input().device_class(DEVICE_CLASS_MOUSE).enable(true);
+    machine().input().device_class(DEVICE_CLASS_LIGHTGUN).enable(true);
+    
     // clear input state, this will cause input_update_init to be called later
     memset(&g_input, 0, sizeof(g_input));
     
@@ -74,7 +78,7 @@ void ios_osd_interface::input_init()
     
     // keyboard
     snprintf(name, sizeof(name)-1, "Keyboard");
-    input_device* keyboard = machine().input().device_class(DEVICE_CLASS_KEYBOARD).add_device(name, name);
+    input_device* keyboard = &machine().input().device_class(DEVICE_CLASS_KEYBOARD).add_device(name, name);
     
     // all keys
     for (int key = MYOSD_KEY_FIRST; key <= MYOSD_KEY_LAST; key++)
@@ -89,17 +93,17 @@ void ios_osd_interface::input_init()
     }
     
     // joystick
-    for (int i=0; i<NUM_JOY; i++)
+    for (int i=0; i<MYOSD_NUM_JOY; i++)
     {
         snprintf(name, sizeof(name)-1, "Joy %d", i+1);
-        input_device* joystick = machine().input().device_class(DEVICE_CLASS_JOYSTICK).add_device(name, name);
+        input_device* joystick = &machine().input().device_class(DEVICE_CLASS_JOYSTICK).add_device(name, name);
         
-        joystick->add_item("LX Axis", ITEM_ID_XAXIS,  get_axis, &g_input.joy_analog[i][MYOSD_AXIS_LX]);
+        joystick->add_item("LX Axis", ITEM_ID_XAXIS,  get_axis,     &g_input.joy_analog[i][MYOSD_AXIS_LX]);
         joystick->add_item("LY Axis", ITEM_ID_YAXIS,  get_axis_neg, &g_input.joy_analog[i][MYOSD_AXIS_LY]);
-        joystick->add_item("LZ Axis", ITEM_ID_ZAXIS,  get_axis, &g_input.joy_analog[i][MYOSD_AXIS_LZ]);
-        joystick->add_item("RX Axis", ITEM_ID_RXAXIS, get_axis, &g_input.joy_analog[i][MYOSD_AXIS_RX]);
+        joystick->add_item("LZ Axis", ITEM_ID_ZAXIS,  get_axis,     &g_input.joy_analog[i][MYOSD_AXIS_LZ]);
+        joystick->add_item("RX Axis", ITEM_ID_RXAXIS, get_axis,     &g_input.joy_analog[i][MYOSD_AXIS_RX]);
         joystick->add_item("RY Axis", ITEM_ID_RYAXIS, get_axis_neg, &g_input.joy_analog[i][MYOSD_AXIS_RY]);
-        joystick->add_item("RZ Axis", ITEM_ID_RZAXIS, get_axis, &g_input.joy_analog[i][MYOSD_AXIS_RZ]);
+        joystick->add_item("RZ Axis", ITEM_ID_RZAXIS, get_axis,     &g_input.joy_analog[i][MYOSD_AXIS_RZ]);
      
         joystick->add_item("A", ITEM_ID_BUTTON1, get_button, BTN(joy_status[i], MYOSD_A));
         joystick->add_item("B", ITEM_ID_BUTTON2, get_button, BTN(joy_status[i], MYOSD_B));
@@ -123,10 +127,10 @@ void ios_osd_interface::input_init()
     }
     
     // mice
-    for (int i=0; i<NUM_JOY; i++)
+    for (int i=0; i<MYOSD_NUM_MICE; i++)
     {
         snprintf(name, sizeof(name)-1, "Mouse %d", i+1);
-        input_device* mouse = machine().input().device_class(DEVICE_CLASS_MOUSE).add_device(name, name);
+        input_device* mouse = &machine().input().device_class(DEVICE_CLASS_MOUSE).add_device(name, name);
 
         mouse->add_item("X Axis", ITEM_ID_XAXIS, get_mouse, &g_input.mouse_x[i]);
         mouse->add_item("Y Axis", ITEM_ID_YAXIS, get_mouse, &g_input.mouse_y[i]);
@@ -137,10 +141,10 @@ void ios_osd_interface::input_init()
     }
     
     // lightgun
-    for (int i=0; i<NUM_JOY; i++)
+    for (int i=0; i<MYOSD_NUM_GUN; i++)
     {
         snprintf(name, sizeof(name)-1, "Lightgun %d", i+1);
-        input_device* lightgun = machine().input().device_class(DEVICE_CLASS_LIGHTGUN).add_device(name, name);
+        input_device* lightgun = &machine().input().device_class(DEVICE_CLASS_LIGHTGUN).add_device(name, name);
         
         lightgun->add_item("X Axis", ITEM_ID_XAXIS, get_axis, &g_input.lightgun_x[i]);
         lightgun->add_item("Y Axis", ITEM_ID_YAXIS, get_axis_neg, &g_input.lightgun_y[i]);
@@ -315,7 +319,10 @@ void ios_osd_interface::input_update()
     osd_printf_verbose("ios_osd_interface::input_update\n");
     
     // fill in the input profile the first time
-    if (g_input.num_ways == 0 && machine().ioport().safe_to_read()) {
+    if (g_input.num_ways == 0) {
+        
+        if (!machine().ioport().safe_to_read())
+            return;
         
         input_profile_init(machine());
         

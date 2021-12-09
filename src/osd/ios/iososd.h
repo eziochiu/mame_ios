@@ -15,7 +15,7 @@
 //============================================================
 // DebugLog
 //============================================================
-#define DebugLog 1
+#define DebugLog 0
 #if DebugLog == 0
 #define osd_printf_debug(...) (void)0
 #endif
