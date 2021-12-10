@@ -96,7 +96,7 @@ export ARCHOPTS="$ARCHOPTS -fPIC"
 ## hack to get sqlite to build
 export ARCHOPTS="$ARCHOPTS -DHAVE_GETHOSTUUID=0"
 
-## export FORCE_DRC_C_BACKEND=1
+export FORCE_DRC_C_BACKEND=1
 ## export NOASM=1
 ## export REGENIE=1
 make OSD=ios -j`sysctl -n hw.logicalcpu` $@ || exit -1
