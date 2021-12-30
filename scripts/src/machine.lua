@@ -1427,7 +1427,9 @@ end
 
 ---------------------------------------------------
 --
---@src/devices/machine/gt913.h,MACHINES["GT913"] = true
+--@src/devices/machine/gt913_io.h,MACHINES["GT913"] = true
+--@src/devices/machine/gt913_kbd.h,MACHINES["GT913"] = true
+--@src/devices/machine/gt913_snd.h,MACHINES["GT913"] = true
 ---------------------------------------------------
 
 if (MACHINES["GT913"]~=null) then
@@ -4877,5 +4879,27 @@ if (MACHINES["NS32082"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/ns32082.cpp",
 		MAME_DIR .. "src/devices/machine/ns32082.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/tsconfdma.h,MACHINES["TSCONF_DMA"] = true
+---------------------------------------------------
+if (MACHINES["TSCONF_DMA"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/tsconfdma.cpp",
+		MAME_DIR .. "src/devices/machine/tsconfdma.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/glukrs.h,MACHINES["GLUKRS"] = true
+---------------------------------------------------
+if (MACHINES["GLUKRS"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/glukrs.cpp",
+		MAME_DIR .. "src/devices/machine/glukrs.h",
 	}
 end

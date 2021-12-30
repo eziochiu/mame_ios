@@ -389,7 +389,7 @@ static const nes_mmc mmc_list[] =
 	{ 351, BMC_TECHLINE9IN1 },
 	{ 352, KAISER_KS106C },        // 4-in-1
 	{ 353, BMC_810305C },          // Super Mario Family multicart
-	// 354 250-in-1 multicart with FDS Bubble Bobble
+	{ 354, BMC_FAM250 },
 	// 355 Hwang Shinwei 3-D Block etc, currently has unemulated PIC16C54
 	{ 356, BMC_JY208 },
 	// 357 Bit Corp 4-in-1 (ID 4602)
@@ -439,7 +439,7 @@ static const nes_mmc mmc_list[] =
 	// 401 Super 19-in-1 VIP 19, not in nes.xml?
 	// 402 22-in-1 Olympic Games, not in nes.xml?
 	// 403 Tetris Family 19-in-1 that only works on Famiclones with 6502's BCD mode
-	// 404 JY-021B multicart, not in nes.xml?
+	{ 404, BMC_JY012005 },
 	// 405 UMC UM6578 NES-on-a-chip games...PnPs?
 	// 406 homebrew game Haradius Zero
 	// 407 VT03 PnP
@@ -463,15 +463,14 @@ static const nes_mmc mmc_list[] =
 	// 425 Cube Tech PnP
 	// 426 PnP
 	// 427 PnP
-	// 428 a couple multicarts
+	{ 428, BMC_TF2740 },
 	// 429 Unused
 	// 430 Unused
 	{ 431, BMC_GN91B },
 	// 432 Realtec 8090
 	{ 433, BMC_NC20MB },
 	// 434 S-009
-	{ 435, NTDEC_2746 },
-	// 436...442 Unused
+	// 435...442 Unused
 	// 443 NC3000M multicart
 	// 444 NC7000M multicart
 	// 445...511 Unused
