@@ -17,10 +17,8 @@ Machines:
   Odisea Paris-Dakar (Peyper)
   Hang-On (Sonic)
   Ator (Video Dens)
-
-  Sir Lancelot (Peyper, 1994)
-  - CPU is a B409 (could be a higher-speed Z80)
-  - Audio CPU is a TMP91P640F-10. Other audio chips are YMF262 and YAC512.
+  Petaco (Juegos Populares)(Game #1101)
+  Sir Lancelot (Peyper) has its own driver.
 
 Status:
 - odin, odin_dlx, solarwap, poleposn, wolfman, nemesisp, odisea, sonstwar, sonstwr2, hangonp: Playable.
@@ -29,13 +27,13 @@ Status:
 
 ToDo:
 - Gammatron: unable to start a game - it's multiball, so need a key combination.
-- ator: score flashes 00/20, playfield inputs not working
+- ator: playfield inputs not working. Not sure if to use init_1 or init_2, won't know until playfield works.
 - ator3bmp: rom missing
-- lancelot: different hardware, rom missing
 - Mechanical sounds
 - Some sounds can go missing, for example odin/odin_dlx loses sounds while counting the bonuses
 - Any machine with inputs "sonstwar" have mistakes in the dip switches. Therefore sonstwar, sonstwr2
    and hangonp don't show a match number at game end.
+- Petaco: not working. Display, Inputs, Outputs, Dips to be done.
 
 *********************************************************************************************************/
 
@@ -70,6 +68,7 @@ public:
 	void init_3() { m_game = 0; m_outhole_solenoid = 11; }
 
 	void peyper(machine_config &config);
+	void petaco(machine_config &config);
 
 private:
 	virtual void machine_start() override;
@@ -87,7 +86,14 @@ private:
 
 	void io_map(address_map &map);
 	void mem_map(address_map &map);
+	void petaco_map(address_map &map);
+	void petaco_io_map(address_map &map);
 
+	void petaco_sol0(u8 data) {}
+	void petaco_sol1(u8 data) {}
+	void ay1_a_w(u8 data) {}
+	void ay1_b_w(u8 data) {}
+	void ay2_b_w(u8 data) {}
 	u8 m_row = 0;
 	u8 m_game = 0;
 	u8 m_outhole_solenoid = 8;
@@ -242,6 +248,30 @@ void peyper_state::io_map(address_map &map)
 	map(0x24, 0x24).portr("DSW1");
 	map(0x28, 0x28).portr("SYSTEM");
 	map(0x2c, 0x2c).w(FUNC(peyper_state::lamp7_w));
+}
+
+void peyper_state::petaco_map(address_map &map)
+{
+	map(0x0000, 0x3fff).rom();
+	map(0x6000, 0x67ff).mirror(0x1800).ram().share("nvram");
+	map(0x8000, 0x8001).rw("i8279", FUNC(i8279_device::read), FUNC(i8279_device::write));
+}
+
+void peyper_state::petaco_io_map(address_map &map)
+{
+	map.unmap_value_high();
+	map.global_mask(0xff);
+	map(0x08, 0x08).portr("DSW0");
+	map(0x09, 0x09).portr("SYSTEM");
+	map(0x0a, 0x0a).portr("DSW1");
+	map(0x0c, 0x0c).w("ay1", FUNC(ay8910_device::address_w));
+	map(0x0d, 0x0d).r("ay1", FUNC(ay8910_device::data_r));
+	map(0x0e, 0x0e).w("ay1", FUNC(ay8910_device::data_w));
+	map(0x10, 0x10).w("ay2", FUNC(ay8910_device::address_w));
+	map(0x11, 0x11).r("ay2", FUNC(ay8910_device::data_r));
+	map(0x12, 0x12).w("ay2", FUNC(ay8910_device::data_w));
+	map(0x14, 0x17).w(FUNC(peyper_state::petaco_sol0));
+	map(0x18, 0x1b).w(FUNC(peyper_state::petaco_sol1));
 }
 
 static INPUT_PORTS_START( pbsonic_generic )
@@ -656,6 +686,41 @@ void peyper_state::peyper(machine_config &config)
 	kbdc.in_ctrl_callback().set_constant(1);
 }
 
+void peyper_state::petaco(machine_config &config)
+{
+	/* basic machine hardware */
+	Z80(config, m_maincpu, 5_MHz_XTAL / 2);  // sch shows 5MHz for a normal Z80
+	m_maincpu->set_addrmap(AS_PROGRAM, &peyper_state::petaco_map);
+	m_maincpu->set_addrmap(AS_IO, &peyper_state::petaco_io_map);
+	m_maincpu->set_periodic_int(FUNC(peyper_state::irq0_line_hold), attotime::from_hz(400));  // missing from sch
+
+	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
+
+	//I8279
+	i8279_device &kbdc(I8279(config, "i8279", 2500000));
+	kbdc.out_sl_callback().set(FUNC(peyper_state::col_w));      // scan SL lines
+	kbdc.out_disp_callback().set(FUNC(peyper_state::disp_w));   // display A&B
+	kbdc.in_rl_callback().set(FUNC(peyper_state::sw_r));        // kbd RL lines
+	kbdc.in_shift_callback().set_constant(1);                   // Shift key
+	kbdc.in_ctrl_callback().set_constant(1);
+
+	/* Video */
+	config.set_default_layout(layout_peyper);
+
+	/* Sound */
+	genpin_audio(config);
+	SPEAKER(config, "ayvol").front_center();
+	ay8910_device &ay1(AY8910(config, "ay1", 5_MHz_XTAL / 2));
+	ay1.port_a_write_callback().set(FUNC(peyper_state::ay1_a_w));
+	ay1.port_b_write_callback().set(FUNC(peyper_state::ay1_b_w));
+	ay1.add_route(ALL_OUTPUTS, "ayvol", 0.9);
+
+	ay8910_device &ay2(AY8910(config, "ay2", 5_MHz_XTAL / 2));
+	ay2.port_a_write_callback().set_nop();    // not connected
+	ay2.port_b_write_callback().set(FUNC(peyper_state::ay2_b_w));
+	ay2.add_route(ALL_OUTPUTS, "ayvol", 0.9);
+}
+
 
 /*-------------------------------------------------------------------
 / Odin (1985)
@@ -777,22 +842,18 @@ ROM_START(ator3bmp) // Version with 3 bumpers, probably newer
 ROM_END
 
 /*-------------------------------------------------------------------
-/ Sir Lancelot (1994)
+/ Petaco (1984)
 /-------------------------------------------------------------------*/
-ROM_START(lancelot)
-	ROM_REGION(0x8000, "maincpu", 0)
-	ROM_LOAD("lancelot.bin", 0x0000, 0x8000, CRC(26c10926) SHA1(ad032b43c15b1d7a7f32a12ca09ea3344d75105b))
-	ROM_REGION(0x4000, "audiocpu", 0)
-	ROM_LOAD("tmp91640.rom", 0x0000, 0x4000, NO_DUMP)
-	ROM_REGION(0x40000, "sound1", 0)
-	ROM_LOAD("snd_u3.bin", 0x00000, 0x20000, CRC(db88c28d) SHA1(35a80509c4a1f931d07af2fc74adbafc11af5639))
-	ROM_LOAD("snd_u4.bin", 0x20000, 0x20000, CRC(5cebed6e) SHA1(d11cc57fadee95f056fc65927fa1f6ff0f337446))
-	ROM_REGION(0x20000, "sound2", 0)
-	ROM_LOAD("snd_u5.bin", 0x00000, 0x20000, CRC(bf141441) SHA1(630b852bb3bba0fcdae13ae548b1e9810bc64d7d))
+ROM_START(petaco)
+	ROM_REGION(0x6000, "maincpu", ROMREGION_ERASEFF)
+	ROM_LOAD("petaco1.cpu", 0x0000, 0x2000, CRC(f4e09939) SHA1(dcc4220b269d271eb0b6ad0a5d3c1a240587a01b))
+	ROM_LOAD("petaco2.cpu", 0x2000, 0x2000, CRC(d29a59ea) SHA1(bb7891e9597bbf5ae6a3276abf2b1247e082d828))
 ROM_END
+
 
 } // Anonymous namespace
 
+GAME( 1984, petaco,   0,        petaco,   odin_dlx, peyper_state, init_1,     ROT0, "Juegos Populares", "Petaco",             MACHINE_IS_SKELETON_MECHANICAL )
 GAME( 1985, odin,     0,        peyper,   odin_dlx, peyper_state, init_1,     ROT0, "Peyper",     "Odin",                     MACHINE_IS_SKELETON_MECHANICAL )
 GAME( 1985, odin_dlx, 0,        peyper,   odin_dlx, peyper_state, init_1,     ROT0, "Sonic",      "Odin De Luxe",             MACHINE_IS_SKELETON_MECHANICAL )
 GAME( 1986, solarwap, 0,        peyper,   solarwap, peyper_state, init_0,     ROT0, "Sonic",      "Solar Wars (Sonic)",       MACHINE_IS_SKELETON_MECHANICAL )
@@ -804,6 +865,5 @@ GAME( 1987, wolfman,  0,        peyper,   wolfman,  peyper_state, init_2,     RO
 GAME( 1986, nemesisp, 0,        peyper,   wolfman,  peyper_state, init_2,     ROT0, "Peyper",     "Nemesis",                  MACHINE_IS_SKELETON_MECHANICAL )
 GAME( 1987, odisea,   0,        peyper,   odisea,   peyper_state, init_2,     ROT0, "Peyper",     "Odisea Paris-Dakar",       MACHINE_IS_SKELETON_MECHANICAL )
 GAME( 1988, hangonp,  0,        peyper,   sonstwar, peyper_state, init_3,     ROT0, "Sonic",      "Hang-On (Sonic)",          MACHINE_IS_SKELETON_MECHANICAL ) // inputs to be checked
-GAME( 1985, ator,     0,        peyper,   sonstwar, peyper_state, init_0,     ROT0, "Video Dens", "Ator (set 1, 2 bumpers)",  MACHINE_IS_SKELETON_MECHANICAL ) // inputs to be checked
-GAME( 1985, ator3bmp, ator,     peyper,   sonstwar, peyper_state, init_0,     ROT0, "Video Dens", "Ator (set 2, 3 bumpers)",  MACHINE_IS_SKELETON_MECHANICAL ) // initial program ROM missing; no manual found
-GAME( 1994, lancelot, 0,        peyper,   sonstwar, peyper_state, empty_init, ROT0, "Peyper",     "Sir Lancelot",             MACHINE_IS_SKELETON_MECHANICAL ) // different hardware (see top of file)
+GAME( 1985, ator,     0,        peyper,   sonstwar, peyper_state, init_1,     ROT0, "Video Dens", "Ator (set 1, 2 bumpers)",  MACHINE_IS_SKELETON_MECHANICAL ) // inputs to be checked
+GAME( 1985, ator3bmp, ator,     peyper,   sonstwar, peyper_state, init_1,     ROT0, "Video Dens", "Ator (set 2, 3 bumpers)",  MACHINE_IS_SKELETON_MECHANICAL ) // initial program ROM missing; no manual found

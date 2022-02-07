@@ -301,7 +301,7 @@ namespace {
  *************************************/
 
 #define LOG_TIMEKEEPER      (0)
-#define LOG_SIO             (0)
+#define LOG_SIO             (1)
 
 /*************************************
  *
@@ -2013,10 +2013,10 @@ void vegas_state::denver(machine_config &config)
 	m_uart1->out_int_callback().set(FUNC(vegas_state::duart_irq_cb));
 
 	NS16550(config, m_uart2, XTAL(1'843'200));
-	m_uart1->out_tx_callback().set("ttys02", FUNC(rs232_port_device::write_txd));
-	m_uart1->out_dtr_callback().set("ttys02", FUNC(rs232_port_device::write_dtr));
-	m_uart1->out_rts_callback().set("ttys02", FUNC(rs232_port_device::write_rts));
-	m_uart1->out_int_callback().set(FUNC(vegas_state::duart_irq_cb));
+	m_uart2->out_tx_callback().set("ttys02", FUNC(rs232_port_device::write_txd));
+	m_uart2->out_dtr_callback().set("ttys02", FUNC(rs232_port_device::write_dtr));
+	m_uart2->out_rts_callback().set("ttys02", FUNC(rs232_port_device::write_rts));
+	m_uart2->out_int_callback().set(FUNC(vegas_state::duart_irq_cb));
 
 	rs232_port_device &ttys01(RS232_PORT(config, "ttys01", 0));
 	ttys01.rxd_handler().set(m_uart1, FUNC(ins8250_uart_device::rx_w));
@@ -2534,6 +2534,9 @@ ROM_START( sf2049te )
 
 	DISK_REGION( PCI_ID_IDE":ide:0:hdd:image" )
 	DISK_IMAGE( "sf2049te", 0, SHA1(625aa36436587b7bec3e7db1d19793b760e2ea51) ) // GUTS 1.61 Game Apr 2, 2001 13:07:21
+
+	ROM_REGION( 0x2000, "serial_security_pic", ROMREGION_ERASEFF ) // security PIC (provides game ID code and serial number)
+	ROM_LOAD( "352_rush_2049_se.u18", 0x0000, 0x1007, CRC(6120c20d) SHA1(9bd76514de261aa7957f896c1ea0b3f91d4cb5d6) ) // SE PIC is fine for TE too
 ROM_END
 
 ROM_START( sf2049tea )
@@ -2545,6 +2548,9 @@ ROM_START( sf2049tea )
 	// All 7 courses are unlocked
 	DISK_REGION( PCI_ID_IDE":ide:0:hdd:image" )
 	DISK_IMAGE( "sf2049tea", 0, SHA1(8d6badf1159903bf44d9a9c7570d4f2417398a93) )
+
+	ROM_REGION( 0x2000, "serial_security_pic", ROMREGION_ERASEFF ) // security PIC (provides game ID code and serial number)
+	ROM_LOAD( "352_rush_2049_se.u18", 0x0000, 0x1007, CRC(6120c20d) SHA1(9bd76514de261aa7957f896c1ea0b3f91d4cb5d6) ) // SE PIC is fine for TE too
 ROM_END
 
 /*************************************
