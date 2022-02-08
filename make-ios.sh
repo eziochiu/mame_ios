@@ -14,21 +14,26 @@
 ##      mac-catalyst            build libmame-mac.a for macOS Catalyst
 ##      mac-catalyst-arm64      build libmame-mac-arm64.a for macOS Catalyst
 ##      mac-catalyst-x86_64     build libmame-mac-x86_64.a for macOS Catalyst
-##      mame                    build mame
+##      mame                    build mame for macOS
 ##      all                     build ios, tvos, and mac-catalyst
-##      clean                   clean all
+##      all clean               clean everything
 ##      release                 build all and gzip
 ##
 
 VERSION_MIN=13.4
 
 ## iOS is the default
-export BUILDDIR=build-ios
-export ARCHOPTS="-arch arm64 -isysroot `xcodebuild -version -sdk iphoneos Path` -miphoneos-version-min=$VERSION_MIN"
-LIBMAME=libmame-ios
+if [ "$1" == "" ]; then
+    shift
+    $0 ios || exit -1
+    exit
+fi
 
 if [ "$1" == "ios" ]; then
     shift
+    export BUILDDIR=build-ios
+    export ARCHOPTS="-arch arm64 -isysroot `xcodebuild -version -sdk iphoneos Path` -miphoneos-version-min=$VERSION_MIN"
+    LIBMAME=libmame-ios
 fi
 
 if [ "$1" == "ios-simulator" ]; then
@@ -55,7 +60,6 @@ fi
 
 ## mac catalyst
 if [ "$1" == "mac-catalyst-arm64" ]; then
-    VERSION_MIN=13.6
     LIBMAME=libmame-mac-arm64
     SDK=`xcodebuild -version -sdk macosx Path`
     export BUILDDIR=build-mac-arm64
@@ -64,7 +68,6 @@ if [ "$1" == "mac-catalyst-arm64" ]; then
 fi
 
 if [ "$1" == "mac-catalyst-x86_64" ]; then
-    VERSION_MIN=13.6
     LIBMAME=libmame-mac-x86_64
     SDK="`xcodebuild -version -sdk macosx Path`"
     export BUILDDIR=build-mac-x86_64
@@ -79,6 +82,7 @@ if [ "$1" == "mac-catalyst" ]; then
     if [ "$1" == "clean" ]; then
         echo Deleting libmame-mac.a
         rm libmame-mac.a || true
+        rm libmame-mac.a.gz || true
     else
         echo Archiving libmame-mac.a
         lipo -create libmame-mac-*.a -output libmame-mac.a
@@ -105,16 +109,6 @@ if [ "$1" == "simulator" ]; then
     shift
     $0 ios-simulator $@ || exit -1
     $0 tvos-simulator $@ || exit -1
-    exit
-fi
-
-if [ "$1" == "clean" ]; then
-    shift
-    $0 all clean || exit -1
-    rm libmame-ios.a
-    rm libmame-tvos.a
-    rm libmame-mac.a
-    rm *.gz
     exit
 fi
 
@@ -162,6 +156,7 @@ make OSD=ios -j`sysctl -n hw.logicalcpu` $@ || exit -1
 if [ "$1" == "clean" ]; then
     echo Deleting $LIBMAME.a
     rm $LIBMAME.a || true
+    rm $LIBMAME.a.gz || true
 else
     LIBDIR="$BUILDDIR/osx_clang/bin/x64/Release"
     echo Archiving $LIBMAME.a
