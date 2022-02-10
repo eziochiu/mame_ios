@@ -54,7 +54,7 @@ fi
 if [ "$1" == "tvos-simulator" ]; then
     LIBMAME=libmame-tvos-simulator
     export BUILDDIR=build-tvos-simulator
-    export ARCHOPTS="-arch `uname -m` -isysroot `xcodebuild -version -sdk iphonesimulator Path` -mtvos-simulator-version-min=$VERSION_MIN"
+    export ARCHOPTS="-arch `uname -m` -isysroot `xcodebuild -version -sdk appletvsimulator Path` -mtvos-simulator-version-min=$VERSION_MIN"
     shift
 fi
 
