@@ -19,6 +19,7 @@
 #include "emuopts.h"
 #include "gamedrv.h"
 #include "drivenum.h"
+#include "romload.h"
 #include "screen.h"
 #include "softlist_dev.h"
 #include "strconv.h"
@@ -258,16 +259,47 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
     if (type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_COMPUTER)
     {
         static std::unordered_set<std::string> g_software;
-        
         std::string software;
-        software_list_device_enumerator iter(config.root_device());
-        for (software_list_device &swlistdev : iter)
+
+        software_list_device_enumerator swlistdev_iter(config.root_device());
+        for (software_list_device &swlistdev : swlistdev_iter)
         {
             if (software.size() != 0)
                 software.append(",");
             software.append(swlistdev.list_name());
         }
-        //osd_printf_debug("SOFTWARE: '%s'\n", software.c_str());
+        
+        // get all the file extensions for cart/flop/etc
+        image_interface_enumerator img_iter(config.root_device());
+        for (device_image_interface &img : img_iter)
+        {
+            // ignore things not user loadable
+            if (!img.user_loadable())
+                continue;
+
+            osd_printf_debug("MEDIA: %s[%s]: '%s' (%s)\n", driver->name, img.brief_instance_name(), img.image_type_name(), img.file_extensions());
+
+            std::string media_type = img.brief_instance_name();
+            
+            // get the extensions and add them too as <type>:<extension> (ie cart:a26 or flop:t64)
+            std::string extensions(img.file_extensions());
+            for (int start = 0, end = extensions.find_first_of(',');; start = end + 1, end = extensions.find_first_of(',', start))
+            {
+                std::string curext(extensions, start, (end == -1) ? extensions.length() - start : end - start);
+                
+                char ach[64];
+                snprintf(ach, sizeof(ach), "%s:%s", media_type.c_str(), curext.c_str());
+
+                if (software.size() != 0)
+                    software.append(",");
+                software.append(ach);
+
+                if (end == -1)
+                    break;
+            }
+        }
+
+        osd_printf_debug("SOFTWARE: '%s'\n", software.c_str());
         info->software_list = g_software.insert(software).first->c_str();
     }
 }
@@ -285,7 +317,7 @@ static std::vector<myosd_game_info> get_game_list(running_machine &machine)
     file_enumerator path(machine.options().media_path());
     for (osd::directory::entry const *dir = path.next(); dir; dir = path.next())
     {
-        char drivername[50];
+        char drivername[64];
         char *dst = drivername;
         char const *src;
 
@@ -297,6 +329,39 @@ static std::vector<myosd_game_info> get_game_list(running_machine &machine)
         int const drivnum = driver_list::find(drivername);
         if (0 <= drivnum)
             included[drivnum] = true;
+    }
+    
+    // iterate over all machines and include romless machines
+    for (int i = 0; i < total; i++)
+    {
+        game_driver const &driver(driver_list::driver(i));
+        machine_config config(driver, machine.options());
+        int type = (driver.flags & machine_flags::MASK_TYPE);
+        
+        if (&driver == &GAME_NAME(___empty))
+            continue;
+        
+        if (!(type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_ARCADE))
+            continue;
+        
+        if (driver.flags & (MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_IS_INCOMPLETE))
+            continue;
+        
+        int num_roms = 0;
+        for (device_t const &device : device_enumerator(config.root_device()))
+        {
+            for (const rom_entry *region = rom_first_region(device); region; region = rom_next_region(region))
+            {
+                for (const rom_entry *rom = rom_first_file(region); rom; rom = rom_next_file(rom))
+                {
+                    num_roms++;
+                }
+            }
+        }
+        if (num_roms == 0)
+        {
+             included[i] = true;
+        }
     }
     
     // now build a list of just avail games, as myosd_game_info(s)

@@ -79,6 +79,8 @@ static void att_memcpy(void *dest, const int16_t *data, int bytes_to_copy, int a
 
 void ios_osd_interface::update_audio_stream(const int16_t *buffer, int samples_this_frame)
 {
+    osd_printf_verbose("ios_osd_interface::update_audio_stream: samples=%d attenuation=%d\n", samples_this_frame, m_attenuation);
+
     static unsigned char bufferatt[882*2*2*10];
 
     if (m_sample_rate != 0 )
