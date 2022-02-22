@@ -287,12 +287,14 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
             {
                 std::string curext(extensions, start, (end == -1) ? extensions.length() - start : end - start);
                 
-                char ach[64];
-                snprintf(ach, sizeof(ach), "%s:%s", media_type.c_str(), curext.c_str());
+                if (curext.size() != 0) {
+                    char ach[64];
+                    snprintf(ach, sizeof(ach), "%s:%s", media_type.c_str(), curext.c_str());
 
-                if (software.size() != 0)
-                    software.append(",");
-                software.append(ach);
+                    if (software.size() != 0)
+                        software.append(",");
+                    software.append(ach);
+                }
 
                 if (end == -1)
                     break;
@@ -330,40 +332,54 @@ static std::vector<myosd_game_info> get_game_list(running_machine &machine)
         if (0 <= drivnum)
             included[drivnum] = true;
     }
-    
-    // iterate over all machines and include romless machines
-    for (int i = 0; i < total; i++)
+
+    // iterate over all machines and find romless machines, and cache the result
+    static std::vector<bool> g_romless;
+    if (g_romless.empty())
     {
-        game_driver const &driver(driver_list::driver(i));
-        machine_config config(driver, machine.options());
-        int type = (driver.flags & machine_flags::MASK_TYPE);
+        g_romless.resize(total);
         
-        if (&driver == &GAME_NAME(___empty))
-            continue;
-        
-        if (!(type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_ARCADE))
-            continue;
-        
-        if (driver.flags & (MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_IS_INCOMPLETE))
-            continue;
-        
-        int num_roms = 0;
-        for (device_t const &device : device_enumerator(config.root_device()))
+        // iterate over all machines and find romless machines
+        for (int i = 0; i < total; i++)
         {
-            for (const rom_entry *region = rom_first_region(device); region; region = rom_next_region(region))
+            game_driver const &driver(driver_list::driver(i));
+            machine_config config(driver, machine.options());
+            int type = (driver.flags & machine_flags::MASK_TYPE);
+            
+            if (&driver == &GAME_NAME(___empty))
+                continue;
+            
+            if (!(type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_ARCADE))
+                continue;
+            
+            if (driver.flags & (MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_IS_INCOMPLETE))
+                continue;
+            
+            int num_roms = 0;
+            for (device_t const &device : device_enumerator(config.root_device()))
             {
-                for (const rom_entry *rom = rom_first_file(region); rom; rom = rom_next_file(rom))
+                for (const rom_entry *region = rom_first_region(device); region; region = rom_next_region(region))
                 {
-                    num_roms++;
+                    for (const rom_entry *rom = rom_first_file(region); rom; rom = rom_next_file(rom))
+                    {
+                        num_roms++;
+                    }
                 }
             }
-        }
-        if (num_roms == 0)
-        {
-             included[i] = true;
+            if (num_roms == 0)
+            {
+                g_romless[i] = true;
+            }
         }
     }
-    
+
+    // iterate over all machines and add romless machines
+    for (int i = 0; i < total; i++)
+    {
+        if (g_romless[i])
+            included[i] = true;
+    }
+
     // now build a list of just avail games, as myosd_game_info(s)
     std::vector<myosd_game_info> list;
     for (int i = 0; i < total; i++)
