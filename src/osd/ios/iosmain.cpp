@@ -17,6 +17,7 @@
 #include "osdepend.h"
 #include "emu.h"
 #include "emuopts.h"
+#include "fileio.h"
 #include "gamedrv.h"
 #include "drivenum.h"
 #include "romload.h"
@@ -332,11 +333,14 @@ static std::vector<myosd_game_info> get_game_list(running_machine &machine)
         if (0 <= drivnum)
             included[drivnum] = true;
     }
-
+    
     // iterate over all machines and find romless machines, and cache the result
     static std::vector<bool> g_romless;
     if (g_romless.empty())
     {
+        osd_printf_debug("FIND ROMLESS MACHINES...\n");
+        osd_ticks_t time = osd_ticks();
+
         g_romless.resize(total);
         
         // iterate over all machines and find romless machines
@@ -371,6 +375,9 @@ static std::vector<myosd_game_info> get_game_list(running_machine &machine)
                 g_romless[i] = true;
             }
         }
+        
+        time = osd_ticks() - time;
+        osd_printf_debug("FIND ROMLESS MACHINES... took %0.3fsec\n", (float)time / osd_ticks_per_second());
     }
 
     // iterate over all machines and add romless machines
