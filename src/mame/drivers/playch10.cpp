@@ -372,7 +372,7 @@ void playch10_state::bios_io_map(address_map &map)
 
 void playch10_state::cart_map(address_map &map)
 {
-	map(0x0000, 0x07ff).ram().mirror(0x1800).share("work_ram");
+	map(0x0000, 0x07ff).mirror(0x1800).ram();
 	map(0x2000, 0x3fff).rw(m_ppu, FUNC(ppu2c0x_device::read), FUNC(ppu2c0x_device::write));
 	map(0x4014, 0x4014).w(FUNC(playch10_state::sprite_dma_w));
 	map(0x4016, 0x4016).rw(FUNC(playch10_state::pc10_in0_r), FUNC(playch10_state::pc10_in0_w));
@@ -711,15 +711,15 @@ static INPUT_PORTS_START( playch10 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-/*Input Ports for gun games*/
+// Input Ports for gun games
 static INPUT_PORTS_START( playc10g )
 	PORT_INCLUDE(playch10)
 
-	PORT_START("GUNX")  /* IN2 - FAKE - Gun X pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
+	PORT_START("GUNX")  // IN2 - FAKE - Gun X pos
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_MINMAX(0, 255)
 
-	PORT_START("GUNY")  /* IN3 - FAKE - Gun Y pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
+	PORT_START("GUNY")  // IN3 - FAKE - Gun Y pos
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_MINMAX(0, 239)
 INPUT_PORTS_END
 
 
