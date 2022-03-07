@@ -308,41 +308,29 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
 }
 
 //============================================================
-// get_game_list - get list of available games
+// get_romless_machines
+// read (or create) romless.ini
 //============================================================
-static std::vector<myosd_game_info> get_game_list(running_machine &machine)
+static std::vector<std::string> get_romless_machines(running_machine &machine)
 {
-    // this is the same code, and method, used by selgame.cpp
-    std::size_t const total = driver_list::total();
-    std::vector<bool> included(total, false);
+    std::vector<std::string> list;
+    char line[256];
+    char version[256];
 
-    // iterate over ROM directories and look for potential ROMs
-    file_enumerator path(machine.options().media_path());
-    for (osd::directory::entry const *dir = path.next(); dir; dir = path.next())
+    snprintf(version, sizeof(version), "; MAME %s\n", emulator_info::get_bare_build_version());
+    FILE* file = fopen("romless.ini", "r");
+    if (file == NULL || fgets(line, sizeof(line), file) == NULL || strcmp(line, version) != 0)
     {
-        char drivername[64];
-        char *dst = drivername;
-        char const *src;
+        std::size_t const total = driver_list::total();
 
-        // build a name for it
-        for (src = dir->name; *src != 0 && *src != '.' && dst < &drivername[std::size(drivername) - 1]; ++src)
-            *dst++ = tolower(uint8_t(*src));
-
-        *dst = 0;
-        int const drivnum = driver_list::find(drivername);
-        if (0 <= drivnum)
-            included[drivnum] = true;
-    }
-    
-    // iterate over all machines and find romless machines, and cache the result
-    static std::vector<bool> g_romless;
-    if (g_romless.empty())
-    {
+        fclose(file);
+        file = fopen("romless.ini", "w");
+        fputs(version, file);
+        fputs("[romless machines]\n", file);
+        
         osd_printf_debug("FIND ROMLESS MACHINES...\n");
         osd_ticks_t time = osd_ticks();
 
-        g_romless.resize(total);
-        
         // iterate over all machines and find romless machines
         for (int i = 0; i < total; i++)
         {
@@ -372,21 +360,71 @@ static std::vector<myosd_game_info> get_game_list(running_machine &machine)
             }
             if (num_roms == 0)
             {
-                g_romless[i] = true;
+                fprintf(file, "%s\n", driver.name);
             }
         }
         
         time = osd_ticks() - time;
         osd_printf_debug("FIND ROMLESS MACHINES... took %0.3fsec\n", (float)time / osd_ticks_per_second());
+        
+        fclose(file);
+        file = fopen("romless.ini", "r");
     }
 
-    // iterate over all machines and add romless machines
-    for (int i = 0; i < total; i++)
+    while (fgets(line, sizeof(line), file) != NULL)
     {
-        if (g_romless[i])
-            included[i] = true;
-    }
+        if (line[strlen(line) - 1] == '\n') line[strlen(line) - 1] = '\0';
+        if (line[strlen(line) - 1] == '\r') line[strlen(line) - 1] = '\0';
+        
+        if (line[0] == '\0' || line[0] == ';')
+            continue;
 
+        if (line[0] == '[')
+            continue;
+        
+        list.push_back(line);
+    }
+    
+    fclose(file);
+    return list;
+ }
+
+//============================================================
+// get_game_list - get list of available games
+//============================================================
+static std::vector<myosd_game_info> get_game_list(running_machine &machine)
+{
+    // this is the same code, and method, used by selgame.cpp
+    std::size_t const total = driver_list::total();
+    std::vector<bool> included(total, false);
+
+    // iterate over ROM directories and look for potential ROMs
+    file_enumerator path(machine.options().media_path());
+    for (osd::directory::entry const *dir = path.next(); dir; dir = path.next())
+    {
+        char drivername[64];
+        char *dst = drivername;
+        char const *src;
+
+        // build a name for it
+        for (src = dir->name; *src != 0 && *src != '.' && dst < &drivername[std::size(drivername) - 1]; ++src)
+            *dst++ = tolower(uint8_t(*src));
+
+        *dst = 0;
+        int const drivnum = driver_list::find(drivername);
+        if (0 <= drivnum)
+            included[drivnum] = true;
+    }
+    
+    // add romless machines too.
+    auto romless = get_romless_machines(machine);
+    for(const auto& drivername: romless)
+    {
+        int const drivnum = driver_list::find(drivername.c_str());
+        if (0 <= drivnum)
+            included[drivnum] = true;
+    }
+    
     // now build a list of just avail games, as myosd_game_info(s)
     std::vector<myosd_game_info> list;
     for (int i = 0; i < total; i++)
