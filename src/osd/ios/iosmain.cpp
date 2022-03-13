@@ -488,11 +488,11 @@ void ios_osd_interface::init(running_machine &machine)
         options.set_value(OPTION_VIDEO, "none", OPTION_PRIORITY_MAXIMUM);
         options.set_value(OPTION_SECONDS_TO_RUN, bench, OPTION_PRIORITY_MAXIMUM);
     }
-    
+
     // check for HISCORE
     if (options.bool_value(OPTION_HISCORE))
     {
-        // TODO: enable hiscore system
+        // ...NOTE hiscores are handled via plugins
     }
     
     // check for OPTION_BEAM and map to OPTION_BEAM_WIDTH_MIN and MAX
@@ -502,6 +502,9 @@ void ios_osd_interface::init(running_machine &machine)
         options.set_value(OPTION_BEAM_WIDTH_MIN, beam, OPTION_PRIORITY_CMDLINE);
         options.set_value(OPTION_BEAM_WIDTH_MAX, beam, OPTION_PRIORITY_CMDLINE);
     }
+    
+    // seeing deadlocks in discrete_task, so only use one processor (for now)
+    osd_num_processors = 1; // 0 is Auto
     
     video_init();
     input_init();

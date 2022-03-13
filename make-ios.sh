@@ -16,7 +16,7 @@
 ##      mac-catalyst-x86_64     build libmame-mac-x86_64.a for macOS Catalyst
 ##      mame                    build mame for macOS
 ##      all                     build ios, tvos, and mac-catalyst
-##      all clean               clean everything
+##      clean                   clean everything
 ##      release                 build all and gzip
 ##
 
@@ -24,8 +24,12 @@ VERSION_MIN=13.4
 
 ## iOS is the default
 if [ "$1" == "" ]; then
-    shift
     $0 ios || exit -1
+    exit
+fi
+
+if [ "$1" == "clean" ]; then
+    $0 all $@ || exit -1
     exit
 fi
 

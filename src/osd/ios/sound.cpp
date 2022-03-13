@@ -213,7 +213,13 @@ inline int emptyQueue(){
     return head == tail;
 }
 
-void queue(unsigned char *p,unsigned size){
+void queue(unsigned char *p,unsigned size) {
+    
+        if (fullQueue(size))
+        {
+            osd_printf_verbose("queue: FULL\n");
+        }
+    
         unsigned newhead;
         if(head + size < TAM)
         {
@@ -240,8 +246,9 @@ unsigned short dequeue(unsigned char *p,unsigned size){
 
         if(emptyQueue())
         {
+            osd_printf_verbose("dequeue: EMPTY(%d)\n", size);
             memset(p,0,size);//TODO ver si quito para que no petardee
-            return size;
+            return 0;
         }
 
         pthread_mutex_lock(&sound_mutex);
@@ -260,8 +267,18 @@ unsigned short dequeue(unsigned char *p,unsigned size){
             memcpy(p+ (TAM-tail),ptr_buf , real - (TAM-tail));
             tail = (tail + real) - TAM;
         }
-
+    
         pthread_mutex_unlock(&sound_mutex);
+
+        if (real < size)
+        {
+            osd_printf_verbose("dequeue: LOW(%d)\n", size-real);
+            memset(p+real, 0, size-real);
+        }
+        else
+        {
+            osd_printf_verbose("dequeue: OK(%d)\n", size);
+        }
 
         return real;
 }
@@ -355,8 +372,7 @@ int sound_open_AudioQueue(int rate, int bits, int stereo){
     soundInit = 1;
     err = AudioQueueStart(in.queue, NULL);
 
-    return 0;
-
+    return err;
 }
 
 ///////// AUDIO UNIT
@@ -379,9 +395,9 @@ static OSStatus playbackCallback(void *inRefCon,
     for (i = 0 ; i < ioData->mNumberBuffers; i++)
     {
         coreAudioBuffer = (unsigned char*) ioData->mBuffers[i].mData;
-        //ioData->mBuffers[i].mDataByteSize = dequeue(coreAudioBuffer,inNumberFrames * 4);
-        dequeue(coreAudioBuffer,inNumberFrames * 4);
-        ioData->mBuffers[i].mDataByteSize = inNumberFrames * 4;
+        ioData->mBuffers[i].mDataByteSize = dequeue(coreAudioBuffer,inNumberFrames * 4);
+        //dequeue(coreAudioBuffer,inNumberFrames * 4);
+        //ioData->mBuffers[i].mDataByteSize = inNumberFrames * 4;
     }
     
     return noErr;
