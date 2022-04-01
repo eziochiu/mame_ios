@@ -42,11 +42,11 @@ public:
 protected:
 	struct evpc_palette
 	{
-		uint8_t       read_index, write_index, mask;
-		int         read;
-		int         state;
-		struct { uint8_t red, green, blue; } color[0x100];
-		//int dirty;
+		uint8_t       read_index = 0, write_index = 0, mask = 0;
+		int         read = 0;
+		int         state = 0;
+		struct { uint8_t red = 0, green = 0, blue = 0; } color[0x100];
+		//int dirty = 0;
 	};
 
 	void device_start() override;
@@ -57,16 +57,16 @@ protected:
 	virtual ioport_constructor device_input_ports() const override;
 	virtual void device_add_mconfig(machine_config &config) override;
 
-	void nvram_default() override;
-	void nvram_read(emu_file &file) override;
-	void nvram_write(emu_file &file) override;
+	virtual void nvram_default() override;
+	virtual bool nvram_read(util::read_stream &file) override;
+	virtual bool nvram_write(util::write_stream &file) override;
 
 private:
 	DECLARE_WRITE_LINE_MEMBER( ready_line );
 
 	DECLARE_WRITE_LINE_MEMBER( video_interrupt_in );
 
-	int     m_address;
+	int     m_address = 0;
 	int     m_dsr_page;
 	bool    m_inDsrArea;
 	bool    m_novram_accessed;
