@@ -227,6 +227,22 @@ void input_profile_init(running_machine &machine)
                     }
                 }
 
+                // walk the input seq and look for highest analog device/joystick
+                if (field.type() >= IPT_ANALOG_FIRST && field.type() <= IPT_ANALOG_LAST)
+                {
+                    input_seq const seq = field.seq(SEQ_TYPE_STANDARD);
+                    for (int i=0; seq[i] != input_seq::end_code; i++)
+                    {
+                        input_code code = seq[i];
+                        if (code.device_class() == DEVICE_CLASS_JOYSTICK && code.device_index() >= g_input.num_inputs)
+                            g_input.num_inputs = code.device_index()+1;
+                        if (code.device_class() == DEVICE_CLASS_MOUSE && code.device_index() >= g_input.num_mouse)
+                            g_input.num_mouse = code.device_index()+1;
+                        if (code.device_class() == DEVICE_CLASS_LIGHTGUN && code.device_index() >= g_input.num_lightgun)
+                            g_input.num_lightgun = code.device_index()+1;
+                    }
+                }
+
                 // count the number of COIN buttons.
                 if (field.type() == IPT_COIN1 && g_input.num_coins < 1)
                     g_input.num_coins = 1;
@@ -280,12 +296,11 @@ void input_profile_init(running_machine &machine)
                     way8=1;
                 
                 // detect if mouse or lightgun input is wanted.
-                if(field.type() == IPT_DIAL   || field.type() == IPT_PADDLE   || field.type() == IPT_POSITIONAL   || field.type() == IPT_TRACKBALL_X ||
-                   field.type() == IPT_DIAL_V || field.type() == IPT_PADDLE_V || field.type() == IPT_POSITIONAL_V || field.type() == IPT_TRACKBALL_Y)
+                if (g_input.num_mouse == 0 && (
+                    field.type() == IPT_DIAL   || field.type() == IPT_PADDLE   || field.type() == IPT_POSITIONAL   || field.type() == IPT_TRACKBALL_X || field.type() == IPT_MOUSE_X ||
+                    field.type() == IPT_DIAL_V || field.type() == IPT_PADDLE_V || field.type() == IPT_POSITIONAL_V || field.type() == IPT_TRACKBALL_Y || field.type() == IPT_MOUSE_Y ))
                     g_input.num_mouse = 1;
-                if(field.type() == IPT_MOUSE_X)
-                    g_input.num_mouse = 1;
-                if(field.type() == IPT_LIGHTGUN_X)
+                if(g_input.num_lightgun == 0 && field.type() == IPT_LIGHTGUN_X)
                     g_input.num_lightgun = 1;
                 if(field.type() == IPT_KEYBOARD)
                     g_input.num_keyboard = 1;
