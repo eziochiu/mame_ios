@@ -8,11 +8,6 @@
 #include "libmame.h"
 
 //============================================================
-// OPTIONS
-//============================================================
-#define OPTION_HISCORE  "hiscore"
-
-//============================================================
 // DebugLog
 //============================================================
 #define DebugLog 0
@@ -38,6 +33,7 @@ extern int myosd_display_height;
 #define OPTION_BENCH    "bench"
 #define OPTION_SOUND    "sound"
 #define OPTION_VIDEO    "video"
+#define OPTION_NUMPROCESSORS "numprocessors"
 
 //============================================================
 //  TYPE DEFINITIONS

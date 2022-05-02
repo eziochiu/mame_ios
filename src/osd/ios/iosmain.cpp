@@ -54,6 +54,7 @@ static const options_entry s_option_entries[] =
     { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,     "enable hiscore system" },
     { OPTION_BEAM,          "1.0",      OPTION_FLOAT,       "set vector beam width maximum" },
     { OPTION_BENCH,         "0",        OPTION_INTEGER,     "benchmark for the given number of emulated seconds" },
+    { OPTION_NUMPROCESSORS, "auto",     OPTION_STRING,      "number of processors; this overrides the number the system reports" },
 
     { nullptr }
 };
@@ -503,8 +504,20 @@ void ios_osd_interface::init(running_machine &machine)
         options.set_value(OPTION_BEAM_WIDTH_MAX, beam, OPTION_PRIORITY_CMDLINE);
     }
     
-    // seeing deadlocks in discrete_task, so only use one processor (for now)
-    osd_num_processors = 1; // 0 is Auto
+    /* get number of processors */
+    const char *nump = options.value(OPTION_NUMPROCESSORS);
+
+    osd_num_processors = 0; // 0 is Auto
+
+    if (strcmp(nump, "auto") != 0)
+    {
+        osd_num_processors = atoi(nump);
+        if (osd_num_processors < 1)
+        {
+            osd_printf_warning("numprocessors < 1 doesn't make much sense. Assuming auto ...\n");
+            osd_num_processors = 0;
+        }
+    }
     
     video_init();
     input_init();
