@@ -26,7 +26,7 @@
 namespace plib
 {
 
-	template<typename T, int N, typename C = uint16_t>
+	template<typename ARENA, typename T, int N, typename C = uint16_t>
 	struct pmatrix_cr
 	{
 		using index_type = C;
@@ -38,7 +38,7 @@ namespace plib
 		pmatrix_cr(const pmatrix_cr &) = default;
 		pmatrix_cr &operator=(const pmatrix_cr &) = default;
 		pmatrix_cr(pmatrix_cr &&) noexcept(std::is_nothrow_move_constructible<parray<value_type, NSQ>>::value) = default;
-		pmatrix_cr &operator=(pmatrix_cr &&) noexcept(std::is_nothrow_move_assignable<parray<value_type, NSQ>>::value && std::is_nothrow_move_assignable<pmatrix2d_vrl<index_type>>::value) = default;
+		pmatrix_cr &operator=(pmatrix_cr &&) noexcept(std::is_nothrow_move_assignable<parray<value_type, NSQ>>::value && std::is_nothrow_move_assignable<pmatrix2d_vrl<ARENA, index_type>>::value) = default;
 
 		enum constants_e
 		{
@@ -57,14 +57,14 @@ namespace plib
 		// NOLINTNEXTLINE
 		std::size_t nz_num;
 
-		explicit pmatrix_cr(std::size_t n)
+		explicit pmatrix_cr(ARENA &arena, std::size_t n)
 		: diag(n)
 		, row_idx(n+1)
 		, col_idx(n*n)
 		, A(n*n)
 		, nz_num(0)
 		//, nzbd(n * (n+1) / 2)
-		, m_nzbd(n, n)
+		, m_nzbd(arena, n, n)
 		, m_size(n)
 		{
 			for (std::size_t i=0; i<n+1; i++)
@@ -237,7 +237,7 @@ namespace plib
 		// FIXME: this should be private
 		// NOLINTNEXTLINE
 		//parray<std::vector<index_type>, N > m_nzbd;    // Support for gaussian elimination
-		pmatrix2d_vrl<index_type> m_nzbd;    // Support for gaussian elimination
+		pmatrix2d_vrl<ARENA, index_type> m_nzbd;    // Support for gaussian elimination
 	private:
 		//parray<C, N < 0 ? -N * (N-1) / 2 : N * (N+1) / 2 > nzbd;    // Support for gaussian elimination
 		std::size_t m_size;
@@ -254,8 +254,9 @@ namespace plib
 		pGEmatrix_cr(pGEmatrix_cr &&) noexcept(std::is_nothrow_move_constructible<base_type>::value) = default;
 		pGEmatrix_cr &operator=(pGEmatrix_cr &&) noexcept(std::is_nothrow_move_assignable<base_type>::value) = default;
 
-		explicit pGEmatrix_cr(std::size_t n)
-		: B(n)
+		template<typename ARENA>
+		explicit pGEmatrix_cr(ARENA &arena, std::size_t n)
+		: B(arena, n)
 		{
 		}
 
@@ -491,8 +492,9 @@ namespace plib
 		pLUmatrix_cr(pLUmatrix_cr &&) noexcept(std::is_nothrow_move_constructible<base_type>::value) = default;
 		pLUmatrix_cr &operator=(pLUmatrix_cr &&) noexcept(std::is_nothrow_move_assignable<base_type>::value) = default;
 
-		explicit pLUmatrix_cr(std::size_t n)
-		: B(n)
+		template<typename ARENA>
+		explicit pLUmatrix_cr(ARENA &arena, std::size_t n)
+		: B(arena, n)
 		, ilu_rows(n+1)
 		, m_ILUp(0)
 		{
@@ -564,8 +566,8 @@ namespace plib
 				//  printf("occ %d\n", (int)i);
 				for (auto i_k = base_type::row_idx[i]; i_k < base_type::diag[i]; i_k++)
 				{
-					const auto k(base_type::col_idx[i_k]);
-					const auto p_k_end(base_type::row_idx[k + 1]);
+					const index_type k(base_type::col_idx[i_k]);
+					const index_type p_k_end(base_type::row_idx[k + 1]);
 					const typename base_type::value_type LUp_i_k = base_type::A[i_k] = base_type::A[i_k] / base_type::A[base_type::diag[k]];
 
 					std::size_t k_j(base_type::diag[k] + 1);
@@ -574,8 +576,8 @@ namespace plib
 					while (i_j < p_i_end && k_j < p_k_end )  // pj = (i, j)
 					{
 						// we can assume that within a row ja increases continuously
-						const std::size_t c_i_j(base_type::col_idx[i_j]); // row i, column j
-						const auto c_k_j(base_type::col_idx[k_j]); // row k, column j
+						const index_type c_i_j(base_type::col_idx[i_j]); // row i, column j
+						const index_type c_k_j(base_type::col_idx[k_j]); // row k, column j
 
 						if (c_k_j == c_i_j)
 							base_type::A[i_j] -= LUp_i_k * base_type::A[k_j];
@@ -616,8 +618,8 @@ namespace plib
 			for (std::size_t i = 1; i < base_type::size(); ++i )
 			{
 				typename base_type::value_type tmp(0);
-				const auto j1(base_type::row_idx[i]);
-				const auto j2(base_type::diag[i]);
+				const index_type j1(base_type::row_idx[i]);
+				const index_type j2(base_type::diag[i]);
 
 				for (auto j = j1; j < j2; ++j )
 					tmp +=  base_type::A[j] * r[base_type::col_idx[j]];
@@ -627,8 +629,8 @@ namespace plib
 			for (std::size_t i = base_type::size(); i-- > 0; )
 			{
 				typename base_type::value_type tmp(0);
-				const auto di(base_type::diag[i]);
-				const auto j2(base_type::row_idx[i+1]);
+				const index_type di(base_type::diag[i]);
+				const index_type j2(base_type::row_idx[i+1]);
 				for (std::size_t j = di + 1; j < j2; j++ )
 					tmp += base_type::A[j] * r[base_type::col_idx[j]];
 				r[i] = (r[i] - tmp) / base_type::A[di];
