@@ -4,6 +4,7 @@
 #include "modules/lib/osdobj_common.h"
 #include "modules/osdmodule.h"
 #include "modules/font/font_module.h"
+#include "../frontend/mame/ui/menuitem.h"
 
 #include "libmame.h"
 

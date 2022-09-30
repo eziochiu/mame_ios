@@ -31,3 +31,8 @@ std::string osd_get_clipboard_text(void)
     return std::string();
 #endif
 }
+
+std::error_condition osd_set_clipboard_text(std::string_view text) noexcept
+{
+    return std::error_condition();
+}

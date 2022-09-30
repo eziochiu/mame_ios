@@ -75,7 +75,7 @@ void er1400_device::device_start()
 	m_data_array = std::make_unique<u16[]>(100);
 	save_pointer(NAME(m_data_array), 100);
 
-	m_data_propagation_timer = timer_alloc(PROPAGATION_TIMER);
+	m_data_propagation_timer = timer_alloc(FUNC(er1400_device::propagate_data), this);
 }
 
 
@@ -297,24 +297,18 @@ WRITE_LINE_MEMBER(er1400_device::c3_w)
 
 
 //-------------------------------------------------
-//  device_timer - called whenever a device timer
-//  fires
+//  propagate_data - clock data out from the chip
 //-------------------------------------------------
 
-void er1400_device::device_timer(emu_timer &timer, device_timer_id id, int param)
+TIMER_CALLBACK_MEMBER(er1400_device::propagate_data)
 {
-	switch (id)
+	if (m_code_input == 5)
 	{
-	case PROPAGATION_TIMER:
-		if (m_code_input == 5)
-		{
-			m_data_output = BIT(m_data_register, 13);
-			LOG("Data output %d bit\n", m_data_output);
-		}
-		else
-			m_data_output = false;
-		break;
+		m_data_output = BIT(m_data_register, 14);
+		LOG("Data output %d bit\n", m_data_output);
 	}
+	else
+		m_data_output = false;
 }
 
 
@@ -376,7 +370,7 @@ WRITE_LINE_MEMBER(er1400_device::clock_w)
 			break;
 
 		case 5: // shift data out
-			m_data_register = (m_data_register & 0x1fff) << 1;
+			m_data_register = (m_data_register & 0x3fff) << 1;
 			m_data_propagation_timer->adjust(attotime::from_usec(20));
 			break;
 
