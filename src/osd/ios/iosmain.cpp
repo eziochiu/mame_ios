@@ -48,13 +48,13 @@ static const options_entry s_option_entries[] =
     //  { OPTION_INIPATH,       INI_PATH,   OPTION_STRING,     "path to ini files" },
 
     // MYOSD options
-    { nullptr,              nullptr,    OPTION_HEADER,      "MYOSD OPTIONS" },
-    { OPTION_VIDEO,         "metal",    OPTION_STRING,      "video output method: none,metal" },
-    { OPTION_SOUND,         "ios",      OPTION_STRING,      "sound output method: none,ios" },
-    { OPTION_HISCORE,       "0",        OPTION_BOOLEAN,     "enable hiscore system" },
-    { OPTION_BEAM,          "1.0",      OPTION_FLOAT,       "set vector beam width maximum" },
-    { OPTION_BENCH,         "0",        OPTION_INTEGER,     "benchmark for the given number of emulated seconds" },
-    { OPTION_NUMPROCESSORS, "auto",     OPTION_STRING,      "number of processors; this overrides the number the system reports" },
+    { nullptr,              nullptr,    core_options::option_type::HEADER,      "MYOSD OPTIONS" },
+    { OPTION_VIDEO,         "metal",    core_options::option_type::STRING,      "video output method: none,metal" },
+    { OPTION_SOUND,         "ios",      core_options::option_type::STRING,      "sound output method: none,ios" },
+    { OPTION_HISCORE,       "0",        core_options::option_type::BOOLEAN,     "enable hiscore system" },
+    { OPTION_BEAM,          "1.0",      core_options::option_type::FLOAT,       "set vector beam width maximum" },
+    { OPTION_BENCH,         "0",        core_options::option_type::INTEGER,     "benchmark for the given number of emulated seconds" },
+    { OPTION_NUMPROCESSORS, "auto",     core_options::option_type::STRING,      "number of processors; this overrides the number the system reports" },
 
     { nullptr }
 };

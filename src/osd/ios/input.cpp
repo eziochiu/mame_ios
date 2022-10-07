@@ -34,13 +34,13 @@ static int get_key(void *device, void *item)
 static int get_axis(void *device, void *item)
 {
     float value = *(float*)item;
-    return (int)(value * INPUT_ABSOLUTE_MAX);
+    return (int)(value * osd::INPUT_ABSOLUTE_MAX);
 }
 
 static int get_axis_neg(void *device, void *item)
 {
     float value = *(float*)item;
-    return (int)(value * INPUT_ABSOLUTE_MAX * -1);
+    return (int)(value * osd::INPUT_ABSOLUTE_MAX * -1);
 }
 
 static int get_mouse(void *device, void *item)

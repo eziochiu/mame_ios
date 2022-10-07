@@ -88,7 +88,6 @@ protected:
 	// construction/destruction
 	v99x8_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, int model);
 
-	static constexpr device_timer_id TIMER_LINE = 0;
 	const address_space_config      m_space_config;
 	address_space*                  m_vram_space;
 
@@ -100,14 +99,15 @@ protected:
 	virtual void device_config_complete() override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param) override;
 	virtual void device_post_load() override;
 
 	// device_memory_interface overrides
 	virtual space_config_vector memory_space_config() const override;
 
 	virtual void palette_init() = 0;
-	virtual u32 palette_entries() const override { return 16 + 256; }
+	virtual u32 palette_entries() const noexcept override { return 16 + 256; }
+
+	TIMER_CALLBACK_MEMBER(update_line);
 
 	void configure_pal_ntsc();
 	void set_screen_parameters();

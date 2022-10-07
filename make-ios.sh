@@ -97,6 +97,12 @@ fi
 
 if [ "$1" == "mame" ]; then
     shift
+    
+    ## hack for (old) bundled SDL2 (see src/osd/modules/input/input_sdl.cpp)
+    export ARCHOPTS="$ARCHOPTS -DSDL_JoystickGetProduct=SDL_JoystickNumButtons"
+    export ARCHOPTS="$ARCHOPTS -DSDL_JoystickGetProductVersion=SDL_JoystickNumButtons"
+    export ARCHOPTS="$ARCHOPTS -DSDL_JoystickGetVendor=SDL_JoystickNumButtons"
+
     make USE_BUNDLED_LIB_SDL2=1 $@ -j`sysctl -n hw.logicalcpu`
     exit
 fi

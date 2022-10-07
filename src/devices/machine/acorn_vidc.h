@@ -54,16 +54,19 @@ protected:
 	// device-level overrides
 	//virtual void device_validity_check(validity_checker &valid) const override;
 	virtual void device_add_mconfig(machine_config &config) override;
-	virtual u32 palette_entries() const override;
+	virtual u32 palette_entries() const noexcept override;
 	virtual void device_config_complete() override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param) override;
 	virtual space_config_vector memory_space_config() const override;
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	virtual u32 get_pixel_clock();
 
+	TIMER_CALLBACK_MEMBER(vblank_timer);
+	TIMER_CALLBACK_MEMBER(sound_drq_timer);
+
 	address_space_config  m_space_config;
+
 	void regs_map(address_map &map);
 
 	enum {
@@ -71,10 +74,6 @@ protected:
 		CRTC_VCR,     CRTC_VSWR, CRTC_VBSR, CRTC_VDSR, CRTC_VDER, CRTC_VBER, CRTC_VCSR, CRTC_VCER
 	};
 	u32 m_crtc_regs[16];
-	enum {
-		TIMER_VIDEO = 1,
-		TIMER_SOUND = 2
-	};
 
 	inline void screen_vblank_line_update();
 	inline void screen_dynamic_res_change();
@@ -161,11 +160,10 @@ public:
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;
 	void regs_map(address_map &map);
-	virtual u32 palette_entries() const override;
+	virtual u32 palette_entries() const noexcept override;
 	virtual void device_start() override;
 	virtual void device_reset() override;
 	virtual void device_config_complete() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param) override;
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	virtual u32 get_pixel_clock() override;
 

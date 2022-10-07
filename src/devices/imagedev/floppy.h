@@ -137,7 +137,6 @@ public:
 	void dskchg_w(int state) { if (dskchg_writable) dskchg = state; }
 	void ds_w(int state) { ds = state; check_led(); }
 
-	void index_resync();
 	attotime time_next_index();
 	attotime get_next_transition(const attotime &from_when);
 	void write_flux(const attotime &start, const attotime &end, int transition_count, const attotime *transitions);
@@ -158,10 +157,11 @@ protected:
 		floppy_image_device *m_fid;
 		const fs::manager_t *m_manager;
 
-		fs_enum(floppy_image_device *fid) : fs::manager_t::floppy_enumerator(), m_fid(fid) {}
+		fs_enum(floppy_image_device *fid);
 
-		virtual void add(const floppy_image_format_t &type, u32 image_size, const char *name, const char *description) override;
 		virtual void add_raw(const char *name, u32 key, const char *description) override;
+	protected:
+		virtual void add_format(const floppy_image_format_t &type, u32 image_size, const char *name, const char *description) override;
 	};
 
 	floppy_image_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
@@ -169,12 +169,13 @@ protected:
 	// device-level overrides
 	virtual void device_start() override;
 	virtual void device_reset() override;
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param) override;
 	virtual void device_config_complete() override;
 	virtual void device_add_mconfig(machine_config &config) override;
 
 	// device_image_interface implementation
 	virtual const software_list_loader &get_software_list_loader() const override;
+
+	TIMER_CALLBACK_MEMBER(index_resync);
 
 	virtual void track_changed();
 	virtual void setup_characteristics() = 0;
