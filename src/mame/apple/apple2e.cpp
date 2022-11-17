@@ -215,6 +215,7 @@ public:
 		m_kbdrom(*this, "keyboard"),
 		m_kbspecial(*this, "keyb_special"),
 		m_sysconfig(*this, "a2_config"),
+		m_franklin_fkeys(*this, "franklin_fkeys"),
 		m_speaker(*this, A2_SPEAKER_TAG),
 		m_cassette(*this, A2_CASSETTE_TAG),
 		m_upperbank(*this, A2_UPPERBANK_TAG),
@@ -270,6 +271,7 @@ public:
 	optional_memory_region m_kbdrom;
 	required_ioport m_kbspecial;
 	required_ioport m_sysconfig;
+	optional_ioport m_franklin_fkeys;
 	required_device<speaker_sound_device> m_speaker;
 	optional_device<cassette_image_device> m_cassette;
 	memory_view m_upperbank, m_0000bank, m_0200bank, m_0400bank;
@@ -421,7 +423,8 @@ private:
 
 	double m_joystick_x1_time, m_joystick_y1_time, m_joystick_x2_time, m_joystick_y2_time;
 
-	u16 m_lastchar, m_strobe;
+	u32 m_franklin_last_fkeys;
+	u16 m_lastchar, m_strobe, m_franklin_strobe;
 	u8 m_transchar;
 	bool m_anykeydown;
 	int m_repeatdelay;
@@ -477,6 +480,7 @@ private:
 	int m_cec_bank;
 
 	u8 *m_aux_ptr, *m_aux_bank_ptr;
+	u16 m_aux_mask;
 
 	int m_inh_bank;
 
@@ -552,13 +556,13 @@ u8 apple2e_state::mig_r(u16 offset)
 	// MIG RAM window
 	if ((offset >= 0x200) && (offset < 0x220))
 	{
-		return m_migram[m_migpage + offset];
+		return m_migram[m_migpage + (offset & 0x1f)];
 	}
 
 	// increment MIG RAM window and return previous value
 	if ((offset >= 0x220) && (offset < 0x240))
 	{
-		u8 rv = m_migram[m_migpage + offset];
+		u8 rv = m_migram[m_migpage + (offset & 0x1f)];
 		m_migpage += 0x20;
 		m_migpage &= 0x7ff;
 		return rv;
@@ -620,14 +624,14 @@ void apple2e_state::mig_w(u16 offset, u8 data)
 	// MIG RAM window
 	if ((offset >= 0x200) && (offset < 0x220))
 	{
-		m_migram[m_migpage + offset] = data;
+		m_migram[m_migpage + (offset & 0x1f)] = data;
 		return;
 	}
 
 	// increment MIG RAM window, but write value at old location first
 	if ((offset >= 0x220) && (offset < 0x240))
 	{
-		m_migram[m_migpage + offset] = data;
+		m_migram[m_migpage + (offset & 0x1f)] = data;
 		m_migpage += 0x20;
 		m_migpage &= 0x7ff; // make sure we wrap
 		return;
@@ -923,6 +927,7 @@ void apple2e_state::machine_start()
 	// and aux slot device if any
 	m_aux_ptr = nullptr;
 	m_aux_bank_ptr = nullptr;
+	m_aux_mask = 0xffff;
 	if (m_a2eauxslot)
 	{
 		m_auxslotdevice = m_a2eauxslot->get_a2eauxslot_card();
@@ -930,6 +935,7 @@ void apple2e_state::machine_start()
 		{
 			m_aux_ptr = m_auxslotdevice->get_vram_ptr();
 			m_aux_bank_ptr = m_auxslotdevice->get_auxbank_ptr();
+			m_aux_mask =  m_auxslotdevice->get_auxbank_mask();
 		}
 	}
 	else    // IIc has 128K right on the motherboard
@@ -946,6 +952,7 @@ void apple2e_state::machine_start()
 	// setup video pointers
 	m_video->m_ram_ptr = m_ram_ptr;
 	m_video->m_aux_ptr = m_aux_ptr;
+	m_video->m_aux_mask = m_aux_mask;
 	m_video->m_char_ptr = memregion("gfx1")->base();
 	m_video->m_char_size = memregion("gfx1")->bytes();
 
@@ -1047,6 +1054,8 @@ void apple2e_state::machine_start()
 	save_item(NAME(m_joystick_y2_time));
 	save_item(NAME(m_lastchar));
 	save_item(NAME(m_strobe));
+	save_item(NAME(m_franklin_last_fkeys));
+	save_item(NAME(m_franklin_strobe));
 	save_item(NAME(m_transchar));
 	save_item(NAME(m_inh_slot));
 	save_item(NAME(m_inh_bank));
@@ -1133,6 +1142,8 @@ void apple2e_state::machine_reset()
 	m_romswitch = false;
 	m_irqmask = 0;
 	m_strobe = 0;
+	m_franklin_last_fkeys = 0;
+	m_franklin_strobe = 0x80;
 	m_transchar = 0;
 	m_anykeydown = false;
 	m_repeatdelay = 10;
@@ -1323,6 +1334,20 @@ TIMER_DEVICE_CALLBACK_MEMBER(apple2e_state::apple2_interrupt)
 				m_intcxrom = false;
 			}
 			update_slotrom_banks();
+		}
+
+		// check Franklin F-keys
+		if ((m_isace500) || (m_isace2200))
+		{
+			const u32 uFkeys = m_franklin_fkeys->read();
+
+			if (uFkeys ^ m_franklin_last_fkeys)
+			{
+				m_transchar = count_leading_zeros_32(uFkeys) + 0x20;
+				m_strobe = 0x80;
+				m_franklin_strobe = 0;
+				m_franklin_last_fkeys = uFkeys;
+			}
 		}
 	}
 }
@@ -2009,6 +2034,16 @@ u8 apple2e_state::c000_r(offs_t offset)
 			if (m_isace2200)
 			{
 				return (m_sysconfig->read() & 0x80) | uFloatingBus7;
+			}
+			break;
+
+		case 0x27: // Ace 2x00 F key strobe
+			if (m_isace2200)
+			{
+				m_strobe = 0;
+				const u8 rv = m_franklin_strobe;
+				m_franklin_strobe = 0x80;
+				return rv;
 			}
 			break;
 
@@ -3141,7 +3176,13 @@ u8 apple2e_state::ace500_c0bx_r(offs_t offset)
 
 		// Alt key status (0=pressed).  Reads as pressed for function keys.
 		case 0x4:
-			return 0xff;
+			{
+				m_strobe = 0;
+				const u8 rv = m_franklin_strobe;
+				m_franklin_strobe = 0x80;
+				return rv;
+			}
+			break;
 
 		// Used by the IRQ handler.  Appears to return altzp status in bit 7, same as $C016.
 		case 0xc:
@@ -3312,15 +3353,15 @@ u8 apple2e_state::lc_r(offs_t offset)
 			{
 				if (m_lcram2)
 				{
-					return m_aux_bank_ptr[(offset & 0xfff) + 0xd000];
+					return m_aux_bank_ptr[((offset & 0xfff) + 0xd000) & m_aux_mask];
 				}
 				else
 				{
-					return m_aux_bank_ptr[(offset & 0xfff) + 0xc000];
+					return m_aux_bank_ptr[((offset & 0xfff) + 0xc000) & m_aux_mask];
 				}
 			}
 
-			return m_aux_bank_ptr[(offset & 0x1fff) + 0xe000];
+			return m_aux_bank_ptr[((offset & 0x1fff) + 0xe000) & m_aux_mask];
 		}
 		else
 		{
@@ -3360,16 +3401,16 @@ void apple2e_state::lc_w(offs_t offset, u8 data)
 			{
 				if (m_lcram2)
 				{
-					m_aux_bank_ptr[(offset & 0xfff) + 0xd000] = data;
+					m_aux_bank_ptr[((offset & 0xfff) + 0xd000) & m_aux_mask] = data;
 				}
 				else
 				{
-					m_aux_bank_ptr[(offset & 0xfff) + 0xc000] = data;
+					m_aux_bank_ptr[((offset & 0xfff) + 0xc000) & m_aux_mask] = data;
 				}
 				return;
 			}
 
-			m_aux_bank_ptr[(offset & 0x1fff) + 0xe000] = data;
+			m_aux_bank_ptr[((offset & 0x1fff) + 0xe000) & m_aux_mask] = data;
 		}
 	}
 	else
@@ -3551,18 +3592,18 @@ u8 apple2e_state::cec8000_r(offs_t offset)
 	}
 }
 
-u8   apple2e_state::auxram0000_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset]; } else { return read_floatingbus(); } }
-void apple2e_state::auxram0000_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset] = data; } }
-u8   apple2e_state::auxram0200_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset+0x200]; } else { return read_floatingbus(); } }
-void apple2e_state::auxram0200_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset+0x200] = data; } }
-u8   apple2e_state::auxram0400_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset+0x400]; } else { return read_floatingbus(); } }
-void apple2e_state::auxram0400_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset+0x400] = data; } }
-u8   apple2e_state::auxram0800_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset+0x800]; } else { return read_floatingbus(); } }
-void apple2e_state::auxram0800_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset+0x800] = data; } }
-u8   apple2e_state::auxram2000_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset+0x2000]; } else { return read_floatingbus(); } }
-void apple2e_state::auxram2000_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset+0x2000] = data; } }
-u8   apple2e_state::auxram4000_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset+0x4000]; } else { return read_floatingbus(); } }
-void apple2e_state::auxram4000_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset+0x4000] = data; } }
+u8   apple2e_state::auxram0000_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[offset & m_aux_mask]; } else { return read_floatingbus(); } }
+void apple2e_state::auxram0000_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[offset & m_aux_mask] = data; } }
+u8   apple2e_state::auxram0200_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[(offset+0x200) & m_aux_mask]; } else { return read_floatingbus(); } }
+void apple2e_state::auxram0200_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[(offset+0x200) & m_aux_mask] = data; } }
+u8   apple2e_state::auxram0400_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[(offset+0x400) & m_aux_mask]; } else { return read_floatingbus(); } }
+void apple2e_state::auxram0400_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[(offset+0x400) & m_aux_mask] = data; } }
+u8   apple2e_state::auxram0800_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[(offset+0x800) & m_aux_mask]; } else { return read_floatingbus(); } }
+void apple2e_state::auxram0800_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[(offset+0x800) & m_aux_mask] = data; } }
+u8   apple2e_state::auxram2000_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[(offset+0x2000) & m_aux_mask]; } else { return read_floatingbus(); } }
+void apple2e_state::auxram2000_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[(offset+0x2000) & m_aux_mask] = data; } }
+u8   apple2e_state::auxram4000_r(offs_t offset)          { if (m_aux_bank_ptr) { return m_aux_bank_ptr[(offset+0x4000) & m_aux_mask]; } else { return read_floatingbus(); } }
+void apple2e_state::auxram4000_w(offs_t offset, u8 data) { if (m_aux_bank_ptr) { m_aux_bank_ptr[(offset + 0x4000) & m_aux_mask] = data; } }
 
 void apple2e_state::base_map(address_map &map)
 {
@@ -4457,6 +4498,20 @@ static INPUT_PORTS_START( ace500 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Open F")       PORT_CODE(KEYCODE_LALT)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Solid F")      PORT_CODE(KEYCODE_RALT)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RESET")        PORT_CODE(KEYCODE_F12)
+
+	PORT_START("franklin_fkeys")
+	PORT_BIT(0x80000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F1)       PORT_CHAR(UCHAR_MAMEKEY(F1))
+	PORT_BIT(0x40000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F2)       PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT(0x20000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F3)       PORT_CHAR(UCHAR_MAMEKEY(F3))
+	PORT_BIT(0x10000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F4)       PORT_CHAR(UCHAR_MAMEKEY(F4))
+	PORT_BIT(0x08000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F5)       PORT_CHAR(UCHAR_MAMEKEY(F5))
+	PORT_BIT(0x04000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F6)       PORT_CHAR(UCHAR_MAMEKEY(F6))
+	PORT_BIT(0x02000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F7)       PORT_CHAR(UCHAR_MAMEKEY(F7))
+	PORT_BIT(0x01000000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F8)       PORT_CHAR(UCHAR_MAMEKEY(F8))
+	PORT_BIT(0x00800000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F9)       PORT_CHAR(UCHAR_MAMEKEY(F9))
+	PORT_BIT(0x00400000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F10)      PORT_CHAR(UCHAR_MAMEKEY(F10))
+	PORT_BIT(0x00200000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F11)      PORT_CHAR(UCHAR_MAMEKEY(F11))
+	PORT_BIT(0x00100000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F12)      PORT_CHAR(UCHAR_MAMEKEY(F12))
 
 	PORT_START(MOUSE_BUTTON_TAG) /* Mouse - button */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Mouse Button") PORT_CODE(MOUSECODE_BUTTON1)
