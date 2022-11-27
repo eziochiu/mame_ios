@@ -138,6 +138,7 @@ private:
 	void draw_sprites(const rectangle &cliprect);
 	void copy_sprites_from_bitmap(bitmap_rgb32 &bitmap, const rectangle &cliprect, u16 pri);
 
+    void pgm2_uncheck_rom();
 	void common_encryption_init();
 	u8 m_encryption_table[0x100]{};
 	bool m_has_decrypted = false;    // so we only do it once.
@@ -145,6 +146,7 @@ private:
 	u32 m_spritekey = 0;
 	u32 m_realspritekey = 0;
 	bool m_sprite_predecrypted = false;
+    bool mem_hack = false;
 
 	u8 m_shareram[0x100]{};
 	u16 m_share_bank = 0;

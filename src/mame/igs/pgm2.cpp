@@ -234,7 +234,7 @@ void pgm2_state::mcu_command(bool is_command)
 		// C0-C9 commands is IC Card RW comms
 		case 0xc0: // insert card or/and check card presence. result: F7 - ok, F4 - no card
 			if (m_memcard[arg1 & 3]->present() == -1)
-				status = 0xf4;
+                status = mem_hack ? 0xf7 : 0xf4;  //Memorycard hack
 			m_mcu_result0 = cmd;
 			break;
 		case 0xc1: // check ready/busy ?
@@ -1372,6 +1372,16 @@ u32 pgm2_state::ddpdojt_speedup2_r()
 	return m_mainram[0x21e04 / 4];
 }
 
+void pgm2_state::pgm2_uncheck_rom()
+{
+  u32 *MAINCPU = (u32 *)memregion("maincpu")->base();
+  int len = memregion("maincpu")->bytes();
+  for (int i = 0; i < len / 4; i++) {
+    if (MAINCPU[i] == 0xE3540002 || MAINCPU[i] == 0xE3540003/*KOV3*/) {
+      MAINCPU[i] = 0xE3540000;
+    }
+  }
+}
 
 // for games with the internal ROMs fully dumped that provide the sprite key and program rom key at runtime
 void pgm2_state::common_encryption_init()
@@ -1388,18 +1398,20 @@ void pgm2_state::common_encryption_init()
 
 	src = (u16 *)memregion("sprites_colour")->base();
 	sprite_colour_decode(src, memregion("sprites_colour")->bytes());
-
+    pgm2_uncheck_rom();//去掉rom完整性检测
 	m_has_decrypted = false;
 }
 
 void pgm2_state::init_orleg2()
 {
+    mem_hack = true;  //Memorycard hack
 	common_encryption_init();
 	m_maincpu->space(AS_PROGRAM).install_read_handler(0x20020114, 0x20020117, read32smo_delegate(*this, FUNC(pgm2_state::orleg2_speedup_r)));
 }
 
 void pgm2_state::init_kov2nl()
 {
+    mem_hack = true;  //Memorycard hack
 	common_encryption_init();
 	m_maincpu->space(AS_PROGRAM).install_read_handler(0x20020470, 0x20020473, read32smo_delegate(*this, FUNC(pgm2_state::kov2nl_speedup_r)));
 }
@@ -1419,6 +1431,7 @@ static const kov3_module_key kov3_100_key = { { 0x40,0xac,0x30,0x00,0x47,0x49,0x
 
 void pgm2_state::init_kov3()
 {
+    mem_hack = true;  //Memorycard hack
 	common_encryption_init();
 	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200000b4, 0x200000b7, read32smo_delegate(*this, FUNC(pgm2_state::kov3_speedup_r)));
 }
