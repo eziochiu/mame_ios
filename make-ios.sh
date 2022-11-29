@@ -122,6 +122,13 @@ if [ "$1" == "simulator" ]; then
     exit
 fi
 
+if [ "$1" == "all-sim" ]; then
+    shift
+    $0 all $@ || exit -1
+    $0 simulator $@ || exit -1
+    exit
+fi
+
 if [ "$1" == "release" ]; then
     shift
     
