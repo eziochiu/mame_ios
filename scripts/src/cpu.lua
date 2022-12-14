@@ -1874,6 +1874,14 @@ end
 --------------------------------------------------
 -- Motorola 68000 series
 --@src/devices/cpu/m68000/m68000.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/m68008.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/m68010.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/m68020.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/m68030.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/m68040.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/scc68070.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/fscpu32.h,CPUS["M680X0"] = true
+--@src/devices/cpu/m68000/mcf5206e.h,CPUS["M680X0"] = true
 --------------------------------------------------
 
 if CPUS["M680X0"] then
@@ -1882,9 +1890,29 @@ if CPUS["M680X0"] then
 		MAME_DIR .. "src/devices/cpu/m68000/m68kcpu.h",
 		MAME_DIR .. "src/devices/cpu/m68000/m68kops.cpp",
 		MAME_DIR .. "src/devices/cpu/m68000/m68kops.h",
-		MAME_DIR .. "src/devices/cpu/m68000/m68000.h",
 		MAME_DIR .. "src/devices/cpu/m68000/m68kfpu.cpp",
 		MAME_DIR .. "src/devices/cpu/m68000/m68kmmu.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68kmusashi.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68kcommon.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68kcommon.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/m68000.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68000.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/m68008.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68008.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/m68010.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68010.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/m68020.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68020.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/m68030.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68030.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/m68040.h",
+		MAME_DIR .. "src/devices/cpu/m68000/m68040.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/scc68070.h",
+		MAME_DIR .. "src/devices/cpu/m68000/scc68070.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/fscpu32.h",
+		MAME_DIR .. "src/devices/cpu/m68000/fscpu32.cpp",
+		MAME_DIR .. "src/devices/cpu/m68000/mcf5206e.h",
+		MAME_DIR .. "src/devices/cpu/m68000/mcf5206e.cpp",
 	}
 end
 
@@ -3168,6 +3196,26 @@ if opt_tool(CPUS, "HP2100") then
 end
 
 --------------------------------------------------
+-- SDS Sigma 2 (disassembler only)
+--@src/devices/cpu/sigma2/sigma2.h,CPUS["SIGMA2"] = true
+--------------------------------------------------
+
+if opt_tool(CPUS, "SIGMA2") then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/sigma2/sigma2d.cpp")
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/sigma2/sigma2d.h")
+end
+
+--------------------------------------------------
+-- Control Data Corporation 1700 (disassembler only)
+--@src/devices/cpu/cdc1700/cdc1700.h,CPUS["CDC1700"] = true
+--------------------------------------------------
+
+if opt_tool(CPUS, "CDC1700") then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/cdc1700/cdc1700d.cpp")
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/cdc1700/cdc1700d.h")
+end
+
+--------------------------------------------------
 -- National Semiconductor HPC
 --@src/devices/cpu/hpc/hpc.h,CPUS["HPC"] = true
 --------------------------------------------------
@@ -3642,4 +3690,21 @@ end
 if opt_tool(CPUS, "MN1610") then
 	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/mn1610/mn1610d.cpp")
 	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/mn1610/mn1610d.h")
+end
+
+--------------------------------------------------
+-- Altera Nios II
+--@src/devices/cpu/nios2/nios2.h,CPUS["NIOS2"] = true
+--------------------------------------------------
+
+if CPUS["NIOS2"] then
+	files {
+		MAME_DIR .. "src/devices/cpu/nios2/nios2.cpp",
+		MAME_DIR .. "src/devices/cpu/nios2/nios2.h",
+	}
+end
+
+if opt_tool(CPUS, "NIOS2") then
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/nios2/nios2dasm.cpp")
+	table.insert(disasm_files , MAME_DIR .. "src/devices/cpu/nios2/nios2dasm.h")
 end

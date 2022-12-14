@@ -395,9 +395,9 @@ static OSStatus playbackCallback(void *inRefCon,
     for (i = 0 ; i < ioData->mNumberBuffers; i++)
     {
         coreAudioBuffer = (unsigned char*) ioData->mBuffers[i].mData;
-        ioData->mBuffers[i].mDataByteSize = dequeue(coreAudioBuffer,inNumberFrames * 4);
-        //dequeue(coreAudioBuffer,inNumberFrames * 4);
-        //ioData->mBuffers[i].mDataByteSize = inNumberFrames * 4;
+        //ioData->mBuffers[i].mDataByteSize = dequeue(coreAudioBuffer,inNumberFrames * 4);
+        dequeue(coreAudioBuffer,inNumberFrames * 4);
+        ioData->mBuffers[i].mDataByteSize = inNumberFrames * 4;
     }
     
     return noErr;
