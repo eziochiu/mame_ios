@@ -334,7 +334,7 @@ bool video_bgfx::init_bgfx_library(osd_window &window)
 	init.resolution.width = wdim.width();
 	init.resolution.height = wdim.height();
 	init.resolution.numBackBuffers = 1;
-	init.resolution.reset = BGFX_RESET_NONE;
+	init.resolution.reset = video_config.waitvsync ? BGFX_RESET_VSYNC : BGFX_RESET_NONE;
 	if (!set_platform_data(init.platformData, window))
 	{
 		osd_printf_error("Setting BGFX platform data failed\n");
@@ -399,22 +399,46 @@ bool video_bgfx::set_platform_data(bgfx::PlatformData &platform_data, osd_window
 	SDL_VERSION(&wmi.version);
 	if (!SDL_GetWindowWMInfo(dynamic_cast<sdl_window_info const &>(window).platform_window(), &wmi))
 	{
-		osd_printf_error("Error getting SDL window info: %s\n", SDL_GetError());
+		osd_printf_error("BGFX: Error getting SDL window info: %s\n", SDL_GetError());
 		return false;
 	}
 
-#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
-	platform_data.ndt = wmi.info.x11.display;
-	platform_data.nwh = (void *)uintptr_t(wmi.info.x11.window);
-#elif BX_PLATFORM_OSX
-	platform_data.ndt = nullptr;
-	platform_data.nwh = wmi.info.cocoa.window;
-#elif BX_PLATFORM_WINDOWS
-	platform_data.ndt = nullptr;
-	platform_data.nwh = wmi.info.win.window;
-#else // BX_PLATFORM_*
-#error "Unsupported BX platform"
-#endif // BX_PLATFORM_*
+	switch (wmi.subsystem)
+	{
+#if defined(SDL_VIDEO_DRIVER_WINDOWS)
+	case SDL_SYSWM_WINDOWS:
+		platform_data.ndt = nullptr;
+		platform_data.nwh = wmi.info.win.window;
+		break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_X11)
+	case SDL_SYSWM_X11:
+		platform_data.ndt = wmi.info.x11.display;
+		platform_data.nwh = (void *)uintptr_t(wmi.info.x11.window);
+		break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_COCOA)
+	case SDL_SYSWM_COCOA:
+		platform_data.ndt = nullptr;
+		platform_data.nwh = wmi.info.cocoa.window;
+		break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_WAYLAND) && SDL_VERSION_ATLEAST(2, 0, 16)
+	case SDL_SYSWM_WAYLAND:
+		platform_data.ndt = wmi.info.wl.display;
+		platform_data.nwh = wmi.info.wl.egl_window;
+		break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_ANDROID)
+	case SDL_SYSWM_ANDROID:
+		platform_data.ndt = nullptr;
+		platform_data.nwh = wmi.info.android.window;
+		break;
+#endif
+	default:
+		osd_printf_error("BGFX: Unsupported SDL window manager type %u\n", wmi.subsystem);
+		return false;
+	}
 #endif // defined(OSD_*)
 
 	platform_data.context = nullptr;
@@ -475,15 +499,31 @@ static void *sdlNativeWindowHandle(SDL_Window *window)
 	if (!SDL_GetWindowWMInfo(window, &wmi))
 		return nullptr;
 
-#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD || BX_PLATFORM_RPI
-	return (void*)wmi.info.x11.window;
-#elif BX_PLATFORM_OSX
-	return wmi.info.cocoa.window;
-#elif BX_PLATFORM_WINDOWS
-	return wmi.info.win.window;
-#elif BX_PLATFORM_EMSCRIPTEN || BX_PLATFORM_ANDROID
-	return nullptr;
-#endif // BX_PLATFORM_*
+	switch (wmi.subsystem)
+	{
+#if defined(SDL_VIDEO_DRIVER_WINDOWS)
+	case SDL_SYSWM_WINDOWS:
+		return wmi.info.win.window;
+#endif
+#if defined(SDL_VIDEO_DRIVER_X11)
+	case SDL_SYSWM_X11:
+		return (void *)uintptr_t(wmi.info.x11.window);
+#endif
+#if defined(SDL_VIDEO_DRIVER_COCOA)
+	case SDL_SYSWM_COCOA:
+		return wmi.info.cocoa.window;
+#endif
+#if defined(SDL_VIDEO_DRIVER_WAYLAND) && SDL_VERSION_ATLEAST(2, 0, 16)
+	case SDL_SYSWM_WAYLAND:
+		return wmi.info.wl.egl_window;
+#endif
+#if defined(SDL_VIDEO_DRIVER_ANDROID)
+	case SDL_SYSWM_ANDROID:
+		return wmi.info.android.window;
+#endif
+	default:
+		return nullptr;
+	}
 }
 #endif // OSD_SDL
 
@@ -500,8 +540,6 @@ renderer_bgfx::renderer_bgfx(osd_window &window, parent_module &parent)
 	, m_texture_cache(nullptr)
 	, m_dimensions(0, 0)
 	, m_max_view(0)
-	, m_view_width(1)
-	, m_view_height(1)
 	, m_avi_view(nullptr)
 	, m_avi_writer(nullptr)
 	, m_avi_target(nullptr)
@@ -537,10 +575,10 @@ renderer_bgfx::renderer_bgfx(osd_window &window, parent_module &parent)
 renderer_bgfx::~renderer_bgfx()
 {
 	// persist settings across fullscreen toggle
-	if (m_chains)
-		m_chains->save_config(m_module().persistent_settings());
-	else if (m_config)
+	if (m_config)
 		m_config->get_first_child()->copy_into(m_module().persistent_settings());
+	else if (m_chains)
+		m_chains->save_config(m_module().persistent_settings());
 
 	bgfx::reset(0, 0, BGFX_RESET_NONE);
 
@@ -1620,6 +1658,7 @@ void renderer_bgfx::load_config(util::xml::data_node const &parentnode)
 		else
 			m_config->get_first_child()->delete_node();
 		windownode->copy_into(*m_config);
+		m_config->get_first_child()->set_attribute("persist", "0");
 		osd_printf_verbose("BGFX: Found configuration for window %d\n", window().index());
 		break;
 	}

@@ -8,15 +8,18 @@
 
 // MAME headers
 #include "emu.h"
+
 #include "drivenum.h"
+#include "emuopts.h"
+#include "fileio.h"
+#include "main.h"
 #include "render.h"
 #include "rendlay.h"
 #include "rendutil.h"
-#include "emuopts.h"
-#include "fileio.h"
+#include "screen.h"
+
 #include "aviio.h"
 #include "png.h"
-#include "screen.h"
 
 // MAMEOS headers
 #include "winmain.h"
@@ -581,9 +584,9 @@ void shaders::begin_frame(render_primitive_list *primlist)
 	{
 		if (PRIMFLAG_GET_SCREENTEX(prim.flags))
 		{
-			containers[num_targets] = prim.container;
 			int screen_index = 0;
 			for (; screen_index < num_screens && containers[screen_index] != prim.container; screen_index++);
+			containers[screen_index] = prim.container;
 			target_to_screen[num_targets] = screen_index;
 			targets_per_screen[screen_index]++;
 			if (screen_index >= num_screens)
@@ -876,6 +879,7 @@ int shaders::create_resources()
 	color_effect->add_uniform("Scale", uniform::UT_VEC3, uniform::CU_COLOR_SCALE);
 	color_effect->add_uniform("Saturation", uniform::UT_FLOAT, uniform::CU_COLOR_SATURATION);
 	color_effect->add_uniform("SourceDims", uniform::UT_VEC2, uniform::CU_SOURCE_DIMS);
+	color_effect->add_uniform("LutEnable", uniform::UT_BOOL, uniform::CU_LUT_ENABLE);
 
 	deconverge_effect->add_uniform("ConvergeX", uniform::UT_VEC3, uniform::CU_CONVERGE_LINEAR_X);
 	deconverge_effect->add_uniform("ConvergeY", uniform::UT_VEC3, uniform::CU_CONVERGE_LINEAR_Y);
@@ -929,9 +933,6 @@ int shaders::create_resources()
 
 	prescale_point_effect->add_uniform("SourceDims", uniform::UT_VEC2, uniform::CU_SOURCE_DIMS);
 
-	default_effect->add_uniform("LutEnable", uniform::UT_BOOL, uniform::CU_LUT_ENABLE);
-	default_effect->add_uniform("UiLutEnable", uniform::UT_BOOL, uniform::CU_UI_LUT_ENABLE);
-
 	ui_effect->add_uniform("LutEnable", uniform::UT_BOOL, uniform::CU_LUT_ENABLE);
 	ui_effect->add_uniform("UiLutEnable", uniform::UT_BOOL, uniform::CU_UI_LUT_ENABLE);
 
@@ -939,7 +940,6 @@ int shaders::create_resources()
 	ui_wrap_effect->add_uniform("UiLutEnable", uniform::UT_BOOL, uniform::CU_UI_LUT_ENABLE);
 
 	vector_buffer_effect->add_uniform("LutEnable", uniform::UT_BOOL, uniform::CU_LUT_ENABLE);
-	vector_buffer_effect->add_uniform("UiLutEnable", uniform::UT_BOOL, uniform::CU_UI_LUT_ENABLE);
 
 	return 0;
 }
@@ -955,7 +955,6 @@ void shaders::begin_draw()
 		return;
 
 	curr_target = 0;
-	curr_effect = default_effect.get();
 
 	// Update for delta_time
 	const double t = machine->time().as_double();
@@ -987,6 +986,8 @@ void shaders::begin_draw()
 	{
 		osd_printf_verbose("Direct3D: Error %08lX during device SetRenderTarget call\n", result);
 	}
+
+	set_curr_effect(default_effect.get());
 }
 
 
@@ -1000,7 +1001,7 @@ void shaders::set_curr_effect(effect *curr_effect)
 	{
 		return;
 	}
-	if (this->curr_effect->is_active())
+	if (this->curr_effect && this->curr_effect->is_active())
 	{
 		this->curr_effect->end();
 	}
@@ -1031,7 +1032,7 @@ void shaders::blit(
 
 		if (clear_dst)
 		{
-			result = d3d->get_device()->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(1,0,0,0), 0, 0);
+			result = d3d->get_device()->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0xff,0,0,0), 0, 0);
 			if (FAILED(result))
 			{
 				osd_printf_verbose("Direct3D: Error %08lX during device clear call\n", result);
@@ -1155,6 +1156,8 @@ int shaders::color_convolution_pass(d3d_render_target *rt, int source_index, pol
 	uint32_t tint = (uint32_t)poly->tint();
 	float prim_tint[3] = { ((tint >> 16) & 0xff) / 255.0f, ((tint >> 8) & 0xff) / 255.0f, (tint & 0xff) / 255.0f };
 	curr_effect->set_vector("PrimTint", 3, prim_tint);
+	curr_effect->set_texture("LutTexture", !lut_texture ? nullptr : lut_texture->get_finaltex());
+	curr_effect->set_bool("UiLutEnable", false);
 
 	next_index = rt->next_index(next_index);
 	blit(rt->source_surface[next_index].Get(), false, D3DPT_TRIANGLELIST, 0, 2);
@@ -1308,7 +1311,7 @@ int shaders::post_pass(d3d_render_target *rt, int source_index, poly_info *poly,
 
 	set_curr_effect(post_effect.get());
 	curr_effect->update_uniforms();
-	curr_effect->set_texture("ShadowTexture", shadow_texture == nullptr ? nullptr : shadow_texture->get_finaltex());
+	curr_effect->set_texture("ShadowTexture", !shadow_texture ? nullptr : shadow_texture->get_finaltex());
 	curr_effect->set_int("ShadowTileMode", options->shadow_mask_tile_mode);
 	curr_effect->set_texture("DiffuseTexture", rt->target_texture[next_index].Get());
 	curr_effect->set_vector("BackColor", 3, back_color);
@@ -1347,10 +1350,10 @@ int shaders::downsample_pass(d3d_render_target *rt, int source_index, poly_info 
 	}
 
 	set_curr_effect(downsample_effect.get());
-	curr_effect->update_uniforms();
 
 	for (int bloom_index = 0; bloom_index < rt->bloom_count; bloom_index++)
 	{
+		curr_effect->update_uniforms();
 		curr_effect->set_vector("TargetDims", 2, rt->bloom_dims[bloom_index]);
 		curr_effect->set_texture("DiffuseTexture",
 				bloom_index == 0
@@ -1358,6 +1361,7 @@ int shaders::downsample_pass(d3d_render_target *rt, int source_index, poly_info 
 					: rt->bloom_texture[bloom_index - 1].Get());
 
 		blit(rt->bloom_surface[bloom_index].Get(), false, D3DPT_TRIANGLELIST, 0, 2);
+		downsample_effect->end();
 	}
 
 	return next_index;
@@ -1461,7 +1465,8 @@ int shaders::vector_buffer_pass(d3d_render_target *rt, int source_index, poly_in
 	curr_effect->update_uniforms();
 
 	curr_effect->set_texture("Diffuse", rt->target_texture[next_index].Get());
-	curr_effect->set_texture("LutTexture", lut_texture == nullptr ? nullptr : lut_texture->get_finaltex());
+	curr_effect->set_texture("LutTexture", !lut_texture ? nullptr : lut_texture->get_finaltex());
+	curr_effect->set_bool("UiLutEnable", false);
 
 	// we need to clear the vector render target here
 	next_index = rt->next_index(next_index);
@@ -1481,7 +1486,9 @@ int shaders::screen_pass(d3d_render_target *rt, int source_index, poly_info *pol
 	curr_effect->update_uniforms();
 
 	curr_effect->set_texture("Diffuse", rt->target_texture[next_index].Get());
-	curr_effect->set_texture("LutTexture", lut_texture == nullptr ? nullptr : lut_texture->get_finaltex());
+	curr_effect->set_texture("LutTexture", nullptr);
+	curr_effect->set_bool("LutEnable", false);
+	curr_effect->set_bool("UiLutEnable", false);
 
 	blit(backbuffer.Get(), false, poly->type(), vertnum, poly->count());
 
@@ -1513,7 +1520,7 @@ void shaders::ui_pass(poly_info *poly, int vertnum)
 	curr_effect->set_texture("Diffuse", diffuse_texture->get_finaltex());
 	curr_effect->update_uniforms();
 
-	curr_effect->set_texture("LutTexture", lut_texture == nullptr ? nullptr : ui_lut_texture->get_finaltex());
+	curr_effect->set_texture("LutTexture", !lut_texture ? nullptr : ui_lut_texture->get_finaltex());
 
 	blit(nullptr, false, poly->type(), vertnum, poly->count());
 }
@@ -2554,7 +2561,7 @@ void uniform::update()
 			m_shader->set_float("SmoothBorderAmount", options->smooth_border);
 			break;
 		case CU_POST_SHADOW_ALPHA:
-			m_shader->set_float("ShadowAlpha", shadersys->shadow_texture == nullptr ? 0.0f : options->shadow_mask_alpha);
+			m_shader->set_float("ShadowAlpha", !shadersys->shadow_texture ? 0.0f : options->shadow_mask_alpha);
 			break;
 		case CU_POST_SHADOW_COUNT:
 		{

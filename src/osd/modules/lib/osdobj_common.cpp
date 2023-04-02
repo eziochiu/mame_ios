@@ -173,14 +173,14 @@ const options_entry osd_options::s_option_entries[] =
 	{ nullptr,                                   nullptr,          core_options::option_type::HEADER,    "OSD EMULATED NETWORKING OPTIONS" },
 	{ OSDOPTION_NETWORK_PROVIDER,                OSDOPTVAL_AUTO,   core_options::option_type::STRING,    "Emulated networking provider: " },
 
-	{ nullptr,                                   nullptr,           core_options::option_type::HEADER, "BGFX POST-PROCESSING OPTIONS" },
-	{ OSDOPTION_BGFX_PATH,                       "bgfx",            core_options::option_type::PATH,   "path to BGFX-related files" },
-	{ OSDOPTION_BGFX_BACKEND,                    "auto",            core_options::option_type::STRING, "BGFX backend to use (d3d9, d3d11, d3d12, metal, opengl, gles, vulkan)" },
-	{ OSDOPTION_BGFX_DEBUG,                      "0",               core_options::option_type::BOOLEAN, "enable BGFX debugging statistics" },
-	{ OSDOPTION_BGFX_SCREEN_CHAINS,              "default",         core_options::option_type::STRING, "comma-delimited list of screen chain JSON names, colon-delimited per-window" },
-	{ OSDOPTION_BGFX_SHADOW_MASK,                "slot-mask.png",   core_options::option_type::STRING, "shadow mask texture name" },
-	{ OSDOPTION_BGFX_LUT,                        "lut-default.png", core_options::option_type::STRING, "LUT texture name" },
-	{ OSDOPTION_BGFX_AVI_NAME,                   OSDOPTVAL_AUTO,    core_options::option_type::PATH,   "filename for BGFX output logging" },
+	{ nullptr,                                   nullptr,           core_options::option_type::HEADER,   "BGFX POST-PROCESSING OPTIONS" },
+	{ OSDOPTION_BGFX_PATH,                       "bgfx",            core_options::option_type::PATH,     "path to BGFX-related files" },
+	{ OSDOPTION_BGFX_BACKEND,                    "auto",            core_options::option_type::STRING,   "BGFX backend to use (d3d9, d3d11, d3d12, metal, opengl, gles, vulkan)" },
+	{ OSDOPTION_BGFX_DEBUG,                      "0",               core_options::option_type::BOOLEAN,  "enable BGFX debugging statistics" },
+	{ OSDOPTION_BGFX_SCREEN_CHAINS,              "",                core_options::option_type::STRING,   "comma-delimited list of screen chain JSON names, colon-delimited per-window" },
+	{ OSDOPTION_BGFX_SHADOW_MASK,                "slot-mask.png",   core_options::option_type::STRING,   "shadow mask texture name" },
+	{ OSDOPTION_BGFX_LUT,                        "lut-default.png", core_options::option_type::STRING,   "LUT texture name" },
+	{ OSDOPTION_BGFX_AVI_NAME,                   OSDOPTVAL_AUTO,    core_options::option_type::PATH,     "filename for BGFX output logging" },
 
 	// End of list
 	{ nullptr }
@@ -365,7 +365,7 @@ void osd_common_t::update_option(const std::string &key, std::vector<std::string
 //-------------------------------------------------
 //  output_callback  - callback for osd_printf_...
 //-------------------------------------------------
-void osd_common_t::output_callback(osd_output_channel channel, const util::format_argument_pack<std::ostream> &args)
+void osd_common_t::output_callback(osd_output_channel channel, const util::format_argument_pack<char> &args)
 {
 	switch (channel)
 	{
@@ -673,6 +673,14 @@ bool osd_common_t::input_init()
 	m_lightgun_input->input_init(machine());
 	m_joystick_input->input_init(machine());
 	return true;
+}
+
+void osd_common_t::poll_input_modules(bool relative_reset)
+{
+	m_keyboard_input->poll_if_necessary(relative_reset);
+	m_mouse_input->poll_if_necessary(relative_reset);
+	m_lightgun_input->poll_if_necessary(relative_reset);
+	m_joystick_input->poll_if_necessary(relative_reset);
 }
 
 void osd_common_t::exit_subsystems()

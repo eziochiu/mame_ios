@@ -55,6 +55,8 @@ function osdmodulesbuild()
 		MAME_DIR .. "src/osd/watchdog.cpp",
 		MAME_DIR .. "src/osd/watchdog.h",
 		MAME_DIR .. "src/osd/interface/inputcode.h",
+		MAME_DIR .. "src/osd/interface/inputdev.h",
+		MAME_DIR .. "src/osd/interface/inputfwd.h",
 		MAME_DIR .. "src/osd/interface/inputman.h",
 		MAME_DIR .. "src/osd/interface/inputseq.cpp",
 		MAME_DIR .. "src/osd/interface/inputseq.h",
@@ -74,6 +76,8 @@ function osdmodulesbuild()
 		MAME_DIR .. "src/osd/modules/font/font_osx.cpp",
 		MAME_DIR .. "src/osd/modules/font/font_sdl.cpp",
 		MAME_DIR .. "src/osd/modules/font/font_windows.cpp",
+		MAME_DIR .. "src/osd/modules/input/assignmenthelper.cpp",
+		MAME_DIR .. "src/osd/modules/input/assignmenthelper.h",
 		MAME_DIR .. "src/osd/modules/input/input_common.cpp",
 		MAME_DIR .. "src/osd/modules/input/input_common.h",
 		MAME_DIR .. "src/osd/modules/input/input_dinput.cpp",
@@ -558,6 +562,14 @@ newoption {
 	},
 }
 
+if not _OPTIONS["NO_OPENGL"] then
+	if _OPTIONS["targetos"] == "android" then
+		_OPTIONS["NO_OPENGL"] = "1"
+	else
+		_OPTIONS["NO_OPENGL"] = "0"
+	end
+end
+
 newoption {
 	trigger = "USE_DISPATCH_GL",
 	description = "Use GL-dispatching",
@@ -581,7 +593,7 @@ newoption {
 }
 
 if not _OPTIONS["NO_USE_MIDI"] then
-	if _OPTIONS["targetos"]=="freebsd" or _OPTIONS["targetos"]=="openbsd" or _OPTIONS["targetos"]=="netbsd" or _OPTIONS["targetos"]=="solaris" or _OPTIONS["targetos"]=="haiku" or _OPTIONS["targetos"] == "asmjs" then
+	if _OPTIONS["targetos"]=="freebsd" or _OPTIONS["targetos"]=="openbsd" or _OPTIONS["targetos"]=="netbsd" or _OPTIONS["targetos"]=="solaris" or _OPTIONS["targetos"]=="haiku" or _OPTIONS["targetos"] == "asmjs" or _OPTIONS["targetos"] == "android" then
 		_OPTIONS["NO_USE_MIDI"] = "1"
 	else
 		_OPTIONS["NO_USE_MIDI"] = "0"
@@ -663,7 +675,7 @@ if not _OPTIONS["USE_PCAP"] then
 end
 
 if not _OPTIONS["USE_QTDEBUG"] then
-	if _OPTIONS["targetos"]=="windows" or _OPTIONS["targetos"]=="macosx" or _OPTIONS["targetos"]=="solaris" or _OPTIONS["targetos"]=="haiku" or _OPTIONS["targetos"]=="asmjs" then
+	if _OPTIONS["targetos"]=="windows" or _OPTIONS["targetos"]=="macosx" or _OPTIONS["targetos"]=="solaris" or _OPTIONS["targetos"]=="haiku" or _OPTIONS["targetos"]=="asmjs" or _OPTIONS["targetos"]=="android" then
 		_OPTIONS["USE_QTDEBUG"] = "0"
 	else
 		_OPTIONS["USE_QTDEBUG"] = "1"
