@@ -37,8 +37,8 @@
 
 
 // configurable logging
-#define LOG_SOUNDCTRL     (1U <<  1)
-#define LOG_BANKSW        (1U <<  2)
+#define LOG_SOUNDCTRL     (1U << 1)
+#define LOG_BANKSW        (1U << 2)
 
 //#define VERBOSE (LOG_GENERAL | LOG_SOUNDCTRL | LOG_BANKSW)
 
@@ -95,8 +95,6 @@ private:
 	void main_map(address_map &map);
 };
 
-
-// video
 
 
 /*************************************
@@ -189,8 +187,6 @@ uint32_t offtwall_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 
 /*************************************

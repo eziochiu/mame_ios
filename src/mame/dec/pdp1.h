@@ -189,13 +189,12 @@ public:
 
 protected:
 	// device_t implementation
-	virtual void device_resolve_objects() override;
 	virtual void device_start() override;
 
 	// device_image_interface implementation
 	virtual const char *file_extensions() const noexcept override { return "tap,rim"; }
 
-	virtual std::error_condition call_load() override;
+	virtual std::pair<std::error_condition, std::string> call_load() override;
 	virtual void call_unload() override;
 
 public:
@@ -235,7 +234,6 @@ public:
 
 protected:
 	// device_t implementation
-	virtual void device_resolve_objects() override;
 	virtual void device_start() override;
 
 	// device_image_interface implementation
@@ -245,7 +243,7 @@ protected:
 	virtual bool is_reset_on_load() const noexcept override { return false; }
 	virtual const char *file_extensions() const noexcept override { return "tap,rim"; }
 
-	virtual std::error_condition call_load() override;
+	virtual std::pair<std::error_condition, std::string> call_load() override;
 	virtual void call_unload() override;
 
 public:
@@ -278,7 +276,6 @@ public:
 
 protected:
 	// device_t implementation
-	virtual void device_resolve_objects() override;
 	virtual void device_start() override;
 
 	// device_image_interface implementation
@@ -291,7 +288,7 @@ protected:
 	virtual const char *image_type_name() const noexcept override { return "printout"; }
 	virtual const char *image_brief_type_name() const noexcept override { return "prin"; }
 
-	virtual std::error_condition call_load() override;
+	virtual std::pair<std::error_condition, std::string> call_load() override;
 	virtual void call_unload() override;
 
 public:
@@ -347,8 +344,7 @@ protected:
 	virtual const char *image_type_name() const noexcept override { return "cylinder"; }
 	virtual const char *image_brief_type_name() const noexcept override { return "cyln"; }
 
-
-	virtual std::error_condition call_load() override;
+	virtual std::pair<std::error_condition, std::string> call_load() override;
 	virtual void call_unload() override;
 
 public:
@@ -423,7 +419,7 @@ public:
 	virtual void video_start() override;
 	void pdp1_palette(palette_device &palette) const;
 	uint32_t screen_update_pdp1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	DECLARE_WRITE_LINE_MEMBER(screen_vblank_pdp1);
+	void screen_vblank_pdp1(int state);
 	INTERRUPT_GEN_MEMBER(pdp1_interrupt);
 	TIMER_CALLBACK_MEMBER(dpy_callback);
 	void pdp1_machine_stop();
@@ -443,7 +439,7 @@ public:
 	void pdp1_draw_lightpen(bitmap_ind16 &bitmap);
 	void pdp1_lightpen();
 
-	template <int Mask> DECLARE_WRITE_LINE_MEMBER(io_status_w);
+	template <int Mask> void io_status_w(int state);
 
 	void pdp1(machine_config &config);
 	void pdp1_map(address_map &map);

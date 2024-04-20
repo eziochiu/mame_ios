@@ -1,16 +1,16 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Kevin Horton, Sean Riddle
-/***************************************************************************
+/*******************************************************************************
 
-NEC uCOM4 MCU tabletops/handhelds or other simple devices,
-most of them (emulated ones) are VFD electronic games/toys.
+NEC uCOM4 MCU tabletops/handhelds or other simple devices, most of them
+(emulated ones) are VFD electronic games/toys.
 
 known chips:
 
   serial  device   etc.
 ----------------------------------------------------------------
-  055     uPD546C  1978, Fidelity Checker Challenger (CR) -> fidel_checkc2.cpp
+  055     uPD546C  1978, Fidelity Checker Challenger (CR) -> fidelity/checkc2.cpp
 
  @017     uPD552C  1979, Bambino UFO Master-Blaster Station (ET-02)
  @042     uPD552C  1980, Tomy Cosmic Combat (TN-??)
@@ -45,14 +45,14 @@ known chips:
  @513     uPD557LC 1980, Castle Toy Name That Tune
 
  @060     uPD650C  1979, Mattel Computer Gin
-  085     uPD650C  1980, Roland TR-808 -> roland_tr808.cpp
+  085     uPD650C  1980, Roland TR-808 -> roland/roland_tr808.cpp
  *127     uPD650C  198?, Sony OA-S1100 Typecorder (subcpu, have dump)
-  128     uPD650C  1981, Roland TR-606 -> roland_tr606.cpp
-  133     uPD650C  1982, Roland TB-303 -> roland_tb303.cpp
+  128     uPD650C  1981, Roland TR-606 -> roland/roland_tr606.cpp
+  133     uPD650C  1982, Roland TB-303 -> roland/roland_tb303.cpp
 
   (* means undumped unless noted, @ denotes it's in this driver)
 
-============================================================================
+================================================================================
 
 Commonly used VFD(vacuum fluorescent display) are by NEC or Futaba.
 
@@ -81,21 +81,21 @@ Color overlays are mostly handled in the SVG, since it's often not possible
 getting the right color when doing it in a .lay file (eg. changing cpacman
 cyan to yellow)
 
-============================================================================
+================================================================================
 
 ROM source notes when dumped from another title, but confident it's the same:
 - astrocmd: Tandy Astro Command
 - caveman: Tandy Caveman
 - grobot9: Mego Fabulous Fred
 
-***************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
 #include "cpu/ucom4/ucom4.h"
-#include "video/pwm.h"
-#include "video/hlcd0515.h"
 #include "sound/spkrdev.h"
+#include "video/hlcd0515.h"
+#include "video/pwm.h"
 
 #include "screen.h"
 #include "speaker.h"
@@ -103,13 +103,13 @@ ROM source notes when dumped from another title, but confident it's the same:
 // internal artwork
 #include "alnchase.lh"
 #include "bmsafari.lh"
-#include "ctntune.lh" // clickable
+#include "ctntune.lh"
 #include "efball.lh"
-#include "grobot9.lh" // clickable
+#include "grobot9.lh"
 #include "mcompgin.lh"
 #include "mvbfree.lh"
 #include "splasfgt.lh"
-#include "tactix.lh" // clickable
+#include "tactix.lh"
 #include "tccombat.lh"
 #include "tmtennis.lh"
 #include "ufombs.lh"
@@ -143,12 +143,12 @@ protected:
 	optional_ioport_array<6> m_inputs; // max 6
 
 	// misc common
-	u8 m_port[9] = { };             // MCU port A-I write data (optional)
-	u8 m_int = 0;                   // MCU INT pin state
-	u16 m_inp_mux = 0;              // multiplexed inputs mask
+	u8 m_port[9] = { }; // MCU port A-I write data (optional)
+	u8 m_int = 0;       // MCU INT pin state
+	u16 m_inp_mux = 0;  // multiplexed inputs mask
 
-	u32 m_grid = 0;                 // VFD current row data
-	u32 m_plate = 0;                // VFD current column data
+	u32 m_grid = 0;     // VFD current row data
+	u32 m_plate = 0;    // VFD current column data
 
 	u8 read_inputs(int columns);
 	void refresh_interrupts(void);
@@ -188,11 +188,11 @@ void hh_ucom4_state::machine_reset()
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Helper Functions
 
-***************************************************************************/
+*******************************************************************************/
 
 // generic input handlers
 
@@ -202,7 +202,7 @@ u8 hh_ucom4_state::read_inputs(int columns)
 
 	// read selected input rows
 	for (int i = 0; i < columns; i++)
-		if (m_inp_mux >> i & 1)
+		if (BIT(m_inp_mux, i))
 			ret |= m_inputs[i]->read();
 
 	return ret;
@@ -235,17 +235,17 @@ INPUT_CHANGED_MEMBER(hh_ucom4_state::single_interrupt_line)
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Minidrivers (subclass, I/O, Inputs, Machine Config, ROM Defs)
 
-***************************************************************************/
+*******************************************************************************/
 
-/***************************************************************************
+/*******************************************************************************
 
   Bambino UFO Master-Blaster Station (manufactured in Japan)
   * PCB label: Emix Corp. ET-02
-  * NEC uCOM-44 MCU, label EMIX D552C 017
+  * NEC uCOM-44 MCU, label EMIX D552C 017, 2-bit sound
   * cyan VFD Emix-101, with blue window
 
   This is Bambino's first game, it is not known if ET-01 exists. Emix Corp.
@@ -258,7 +258,7 @@ INPUT_CHANGED_MEMBER(hh_ucom4_state::single_interrupt_line)
   - Japan: "Missile Guerilla Warfare Maneuvers", published by Tomy
   - World: UFO Master-Blaster Station, published by Bambino
 
-***************************************************************************/
+*******************************************************************************/
 
 class ufombs_state : public hh_ucom4_state
 {
@@ -305,7 +305,7 @@ void ufombs_state::speaker_w(u8 data)
 	m_speaker->level_w(data & 3);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( ufombs )
 	PORT_START("IN.0") // port A
@@ -321,6 +321,8 @@ static INPUT_PORTS_START( ufombs )
 	PORT_CONFSETTING(    0x04, "3" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
+
+// config
 
 void ufombs_state::ufombs(machine_config &config)
 {
@@ -367,11 +369,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bambino Super Star Football (manufactured in Japan)
   * PCB label: Emix Corp. ET-03
-  * NEC uCOM-43 MCU, label D553C 031
+  * NEC uCOM-43 MCU, label D553C 031, 2-bit sound
   * cyan VFD Emix-102
 
   The game was rereleased in 1982 as Football Classic (ET-0351), with an
@@ -381,7 +383,7 @@ ROM_END
   Then choose a formation(A,B,C) and either pass the ball, and/or start
   running. For more information, refer to the official manual.
 
-***************************************************************************/
+*******************************************************************************/
 
 class ssfball_state : public hh_ucom4_state
 {
@@ -439,7 +441,7 @@ u8 ssfball_state::input_b_r()
 	return m_inputs[2]->read() | read_inputs(2);
 }
 
-// config
+// inputs
 
 /* physical button layout and labels are like this:
 
@@ -475,6 +477,8 @@ static INPUT_PORTS_START( ssfball )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_16WAY
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Pass")
 INPUT_PORTS_END
+
+// config
 
 void ssfball_state::ssfball(machine_config &config)
 {
@@ -528,18 +532,18 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bambino Kick The Goal Soccer
   * PCB label: Emix Corp. ET-10/08 (PCB is for 2 possible games)
-  * NEC uCOM-44 MCU, label D552C 043
+  * NEC uCOM-44 MCU, label D552C 043, 1-bit sound
   * cyan VFD Emix-105, with bezel overlay
 
   Press the Display button twice to start the game. Action won't start until
   player 1 presses one of the directional keys. In 2-player mode, player 2
   controls the goalkeeper, defensive players are still controlled by the CPU.
 
-***************************************************************************/
+*******************************************************************************/
 
 class bmsoccer_state : public hh_ucom4_state
 {
@@ -599,7 +603,7 @@ u8 bmsoccer_state::input_a_r()
 	return read_inputs(2);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( bmsoccer )
 	PORT_START("IN.0") // C0 port A
@@ -623,6 +627,8 @@ static INPUT_PORTS_START( bmsoccer )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Display/Banana Shoot")
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("Shoot")
 INPUT_PORTS_END
+
+// config
 
 void bmsoccer_state::bmsoccer(machine_config &config)
 {
@@ -666,15 +672,15 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bambino Safari (manufactured in Japan)
   * PCB label: Emix Corp. ET-11
-  * NEC uCOM-44 MCU, label EMIX D552C 049
+  * NEC uCOM-44 MCU, label EMIX D552C 049, 1-bit sound
   * cyan VFD Emix-108
   * color overlay: green (optional)
 
-***************************************************************************/
+*******************************************************************************/
 
 class bmsafari_state : public hh_ucom4_state
 {
@@ -726,7 +732,7 @@ void bmsafari_state::speaker_w(u8 data)
 	m_speaker->level_w(data & 1);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( bmsafari )
 	PORT_START("IN.0") // port A
@@ -742,6 +748,8 @@ static INPUT_PORTS_START( bmsafari )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_16WAY
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_16WAY
 INPUT_PORTS_END
+
+// config
 
 void bmsafari_state::bmsafari(machine_config &config)
 {
@@ -785,17 +793,17 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bambino Space Laser Fight (manufactured in Japan)
   * PCB label: Emix Corp. ET-12
-  * NEC uCOM-43 MCU, label D553C 055
+  * NEC uCOM-43 MCU, label D553C 055, 2-bit sound
   * cyan VFD Emix-104, with blue or transparent window
 
   This is basically a revamp of their earlier Boxing game (ET-06), case and
   buttons are exactly the same.
 
-***************************************************************************/
+*******************************************************************************/
 
 class splasfgt_state : public hh_ucom4_state
 {
@@ -854,7 +862,7 @@ u8 splasfgt_state::input_b_r()
 	return read_inputs(4);
 }
 
-// config
+// inputs
 
 /* physical button layout and labels are like this:
 
@@ -903,6 +911,8 @@ static INPUT_PORTS_START( splasfgt )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
+// config
+
 void splasfgt_state::splasfgt(machine_config &config)
 {
 	// basic machine hardware
@@ -948,11 +958,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bandai Gunfighter
   * PCB label: KAKEN CORP., PT-256, PT-256B/PT-258 for the button PCBs
-  * NEC uCOM-43 MCU, label D553C 084
+  * NEC uCOM-43 MCU, label D553C 084, 1-bit sound
   * cyan VFD NEC FIP9BM18T
 
   This is presumedly Bandai's first VFD handheld game. Japanese versions of
@@ -966,7 +976,7 @@ ROM_END
   - World: Gunfighter (model 8006), published by Bandai
   - Canada: Duel, published by Bandai ("FL Gun Professional" on handheld itself)
 
-***************************************************************************/
+*******************************************************************************/
 
 class bgunf_state : public hh_ucom4_state
 {
@@ -1021,7 +1031,7 @@ u8 bgunf_state::input_r()
 	return read_inputs(2);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( bgunf )
 	PORT_START("IN.0") // G0 port A
@@ -1043,6 +1053,8 @@ static INPUT_PORTS_START( bgunf )
 	PORT_CONFSETTING(    0x04, "Auto 3" )
 	PORT_CONFSETTING(    0x08, "Manual" )
 INPUT_PORTS_END
+
+// config
 
 void bgunf_state::bgunf(machine_config &config)
 {
@@ -1086,11 +1098,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bandai Galaxian
   * PCB label: SM-008
-  * NEC uCOM-43 MCU, label D553C 103
+  * NEC uCOM-43 MCU, label D553C 103, 2-bit sound
   * cyan/red VFD Futaba DM-12Z
   * color overlay: score/bottom rows: yellow, 2nd/3rd rows: pink
 
@@ -1101,7 +1113,7 @@ ROM_END
   There's also a 2nd version on a NEC D7502G MCU, this one doesn't have
   the Star Wars jingle.
 
-***************************************************************************/
+*******************************************************************************/
 
 class bgalaxn_state : public hh_ucom4_state
 {
@@ -1145,7 +1157,7 @@ void bgalaxn_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( bgalaxn )
 	PORT_START("IN.0") // port A
@@ -1161,6 +1173,8 @@ static INPUT_PORTS_START( bgalaxn )
 	PORT_START("IN.1") // INT
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, hh_ucom4_state, single_interrupt_line, 0)
 INPUT_PORTS_END
+
+// config
 
 void bgalaxn_state::bgalaxn(machine_config &config)
 {
@@ -1205,11 +1219,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Bandai Crazy Climber (manufactured in Japan)
   * PCB labels: SM-020/SM-021
-  * NEC uCOM-43 MCU, label D553C 170
+  * NEC uCOM-43 MCU, label D553C 170, 1-bit sound
   * cyan/red/green VFD NEC FIP6AM2-T no. 1-8 2
   * color overlay: score/bird rows: pink
 
@@ -1217,7 +1231,7 @@ ROM_END
   - Japan: FL Crazy Climbing, published by Bandai
   - USA: Crazy Climber, published by Bandai
 
-***************************************************************************/
+*******************************************************************************/
 
 class bcclimbr_state : public hh_ucom4_state
 {
@@ -1261,7 +1275,7 @@ void bcclimbr_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( bcclimbr )
 	PORT_START("IN.0") // port A
@@ -1278,6 +1292,8 @@ static INPUT_PORTS_START( bcclimbr )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICKRIGHT_DOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICKRIGHT_RIGHT )
 INPUT_PORTS_END
+
+// config
 
 void bcclimbr_state::bcclimbr(machine_config &config)
 {
@@ -1321,10 +1337,10 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Castle Toy Tactix
-  * NEC uCOM-43 MCU, label D557LC 512
+  * NEC uCOM-43 MCU, label D557LC 512, 1-bit sound
   * 16 LEDs behind buttons
 
   Tactix is similar to Merlin, for 1 or 2 players. In 2-player mode, simply
@@ -1334,7 +1350,7 @@ ROM_END
   3: Triple Play (3 in a row)
   4: Concentration (memory)
 
-***************************************************************************/
+*******************************************************************************/
 
 class tactix_state : public hh_ucom4_state
 {
@@ -1380,7 +1396,7 @@ u8 tactix_state::input_r()
 	return read_inputs(5);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( tactix )
 	PORT_START("IN.0") // C0 port A
@@ -1414,6 +1430,8 @@ static INPUT_PORTS_START( tactix )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
+// config
+
 void tactix_state::tactix(machine_config &config)
 {
 	// basic machine hardware
@@ -1446,16 +1464,16 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Castle Toy Name That Tune
-  * NEC uCOM-43 MCU, label D557LC 513
+  * NEC uCOM-43 MCU, label D557LC 513, 1-bit sound
   * 2 lamps, 1 7seg(+2 fake 7segs above a power-on lamp, showing "0")
 
   This is a tabletop multiplayer game. Players are meant to place a bid,
   and guess the song (by announcing it to everyone).
 
-***************************************************************************/
+*******************************************************************************/
 
 class ctntune_state : public hh_ucom4_state
 {
@@ -1520,7 +1538,7 @@ u8 ctntune_state::input_r()
 	return read_inputs(6);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( ctntune )
 	PORT_START("IN.0") // C0 port A
@@ -1556,6 +1574,8 @@ static INPUT_PORTS_START( ctntune )
 	PORT_BIT( 0x0e, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
+// config
+
 void ctntune_state::ctntune(machine_config &config)
 {
 	// basic machine hardware
@@ -1589,11 +1609,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Epoch Invader From Space (manufactured in Japan)
   * PCB labels: 36010(A/B)
-  * NEC uCOM-44 MCU, label D552C 054
+  * NEC uCOM-44 MCU, label D552C 054, 1-bit sound
   * cyan VFD NEC FIP9AM18T tube no. 0D
   * color overlay: alien rows 1,2: blue, 3,4: yellow, 5: red
 
@@ -1601,16 +1621,16 @@ ROM_END
   - USA: Invader From Space, published by Epoch
   - UK: Invader From Space, published by Grandstand
 
-***************************************************************************/
+*******************************************************************************/
 
-class invspace_state : public hh_ucom4_state
+class einspace_state : public hh_ucom4_state
 {
 public:
-	invspace_state(const machine_config &mconfig, device_type type, const char *tag) :
+	einspace_state(const machine_config &mconfig, device_type type, const char *tag) :
 		hh_ucom4_state(mconfig, type, tag)
 	{ }
 
-	void invspace(machine_config &config);
+	void einspace(machine_config &config);
 
 private:
 	void update_display();
@@ -1620,12 +1640,12 @@ private:
 
 // handlers
 
-void invspace_state::update_display()
+void einspace_state::update_display()
 {
 	m_display->matrix(m_grid, m_plate);
 }
 
-void invspace_state::grid_w(offs_t offset, u8 data)
+void einspace_state::grid_w(offs_t offset, u8 data)
 {
 	// I0: speaker out
 	if (offset == PORTI)
@@ -1637,7 +1657,7 @@ void invspace_state::grid_w(offs_t offset, u8 data)
 	update_display();
 }
 
-void invspace_state::plate_w(offs_t offset, u8 data)
+void einspace_state::plate_w(offs_t offset, u8 data)
 {
 	// E,F,G,H123: vfd plate
 	int shift = (offset - PORTE) * 4;
@@ -1645,9 +1665,9 @@ void invspace_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
-static INPUT_PORTS_START( invspace )
+static INPUT_PORTS_START( einspace )
 	PORT_START("IN.0") // port A
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SELECT )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START )
@@ -1660,19 +1680,21 @@ static INPUT_PORTS_START( invspace )
 	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-void invspace_state::invspace(machine_config &config)
+// config
+
+void einspace_state::einspace(machine_config &config)
 {
 	// basic machine hardware
 	NEC_D552(config, m_maincpu, 400_kHz_XTAL);
 	m_maincpu->read_a().set_ioport("IN.0");
 	m_maincpu->read_b().set_ioport("IN.1");
-	m_maincpu->write_c().set(FUNC(invspace_state::grid_w));
-	m_maincpu->write_d().set(FUNC(invspace_state::grid_w));
-	m_maincpu->write_e().set(FUNC(invspace_state::plate_w));
-	m_maincpu->write_f().set(FUNC(invspace_state::plate_w));
-	m_maincpu->write_g().set(FUNC(invspace_state::plate_w));
-	m_maincpu->write_h().set(FUNC(invspace_state::plate_w));
-	m_maincpu->write_i().set(FUNC(invspace_state::grid_w));
+	m_maincpu->write_c().set(FUNC(einspace_state::grid_w));
+	m_maincpu->write_d().set(FUNC(einspace_state::grid_w));
+	m_maincpu->write_e().set(FUNC(einspace_state::plate_w));
+	m_maincpu->write_f().set(FUNC(einspace_state::plate_w));
+	m_maincpu->write_g().set(FUNC(einspace_state::plate_w));
+	m_maincpu->write_h().set(FUNC(einspace_state::plate_w));
+	m_maincpu->write_i().set(FUNC(einspace_state::grid_w));
 
 	// video hardware
 	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_SVG));
@@ -1690,30 +1712,30 @@ void invspace_state::invspace(machine_config &config)
 
 // roms
 
-ROM_START( invspace )
+ROM_START( einspace )
 	ROM_REGION( 0x0400, "maincpu", 0 )
 	ROM_LOAD( "d552c_054", 0x0000, 0x0400, CRC(913d9c13) SHA1(f20edb5458e54d2f6d4e45e5d59efd87e05a6f3f) )
 
 	ROM_REGION( 110894, "screen", 0)
-	ROM_LOAD( "invspace.svg", 0, 110894, CRC(1ec324b8) SHA1(847621c7d6c10b254b715642d63efc9c30a701c1) )
+	ROM_LOAD( "einspace.svg", 0, 110894, CRC(1ec324b8) SHA1(847621c7d6c10b254b715642d63efc9c30a701c1) )
 ROM_END
 
 
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Epoch Electronic Football (manufactured in Japan)
   * PCB labels: 36020(A/B/C)
-  * NEC uCOM-43 MCU, label D553C 080
+  * NEC uCOM-43 MCU, label D553C 080, 1-bit sound
   * cyan VFD NEC FIP10AM15T tube no. 0F, with bezel overlay
 
   known releases:
   - USA: Electronic Football (aka Pro-Bowl Football), published by Epoch
   - Japan: American Football, published by Epoch
 
-***************************************************************************/
+*******************************************************************************/
 
 class efball_state : public hh_ucom4_state
 {
@@ -1757,7 +1779,7 @@ void efball_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( efball )
 	PORT_START("IN.0") // port A
@@ -1782,6 +1804,8 @@ static INPUT_PORTS_START( efball )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL PORT_NAME("P2 Kick Return")
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("P1 Kick")
 INPUT_PORTS_END
+
+// config
 
 void efball_state::efball(machine_config &config)
 {
@@ -1818,13 +1842,13 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Epoch Galaxy II (manufactured in Japan)
   * PCB labels: 19096/96062
-  * NEC uCOM-43 MCU, label D553C 153
-  * cyan/red VFD NEC FIP10xM20T. x = multiple VFD revisions exist,
-    with different graphics: rev B no. 1-8, rev. D no. 2-21.
+  * NEC uCOM-43 MCU, label D553C 153, 1-bit sound
+  * cyan/red VFD NEC FIP10xM20T. x = multiple VFD revisions exist, with different
+    graphics: rev B no. 1-8, rev. D no. 2-21.
   * color overlay: score: blue, top/bottom rows: yellow, row 2,3: red
 
   known releases:
@@ -1832,7 +1856,7 @@ ROM_END
   - Japan: Astro Wars, published by Epoch
   - UK: Astro Wars, published by Grandstand
 
-***************************************************************************/
+*******************************************************************************/
 
 class galaxy2_state : public hh_ucom4_state
 {
@@ -1877,7 +1901,7 @@ void galaxy2_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( galaxy2 )
 	PORT_START("IN.0") // port A
@@ -1891,6 +1915,8 @@ static INPUT_PORTS_START( galaxy2 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START )
 	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
+
+// config
 
 void galaxy2_state::galaxy2(machine_config &config)
 {
@@ -1952,11 +1978,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Epoch Astro Command (manufactured in Japan)
   * PCB labels: 96111/96112
-  * NEC uCOM-43 MCU, label D553C 202
+  * NEC uCOM-43 MCU, label D553C 202, 1-bit sound
   * cyan/red VFD NEC FIP9AM20T no. 42-42
   * color overlay: right 3 columns: yellow, bottom row 6 columns: pink
 
@@ -1965,7 +1991,7 @@ ROM_END
   - USA: Astro Command, published by Tandy
   - UK: Scramble, published by Grandstand
 
-***************************************************************************/
+*******************************************************************************/
 
 class astrocmd_state : public hh_ucom4_state
 {
@@ -2015,7 +2041,7 @@ void astrocmd_state::plate_w(offs_t offset, u8 data)
 		update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( astrocmd )
 	PORT_START("IN.0") // port A
@@ -2030,6 +2056,8 @@ static INPUT_PORTS_START( astrocmd )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 INPUT_PORTS_END
+
+// config
 
 void astrocmd_state::astrocmd(machine_config &config)
 {
@@ -2073,11 +2101,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Epoch Dracula (manufactured in Japan)
   * PCB label: 96121
-  * NEC uCOM-43 MCU, label D553C 206
+  * NEC uCOM-43 MCU, label D553C 206, 1-bit sound
   * cyan/red/green VFD NEC FIP8BM20T no. 2-42
 
   known releases:
@@ -2085,7 +2113,7 @@ ROM_END
   - USA: Dracula, red case, published by Epoch
   - Other: Dracula, yellow case, published by Hales
 
-***************************************************************************/
+*******************************************************************************/
 
 class edracula_state : public hh_ucom4_state
 {
@@ -2129,7 +2157,7 @@ void edracula_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( edracula )
 	PORT_START("IN.0") // port A
@@ -2144,6 +2172,8 @@ static INPUT_PORTS_START( edracula )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 INPUT_PORTS_END
+
+// config
 
 void edracula_state::edracula(machine_config &config)
 {
@@ -2187,13 +2217,13 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Mattel Computer Gin
-  * NEC uCOM-43 MCU, label D650C 060 (die label same)
-  * Hughes HLCD0530 LCD driver, 5 by 14 segments LCD panel, no sound
+  * NEC uCOM-43 MCU, label D650C 060 (die label same), no sound
+  * Hughes HLCD0530 LCD driver, 5 by 14 segments LCD panel
 
-***************************************************************************/
+*******************************************************************************/
 
 class mcompgin_state : public hh_ucom4_state
 {
@@ -2230,7 +2260,7 @@ void mcompgin_state::lcd_w(u8 data)
 	m_lcd->clock_w(data >> 1 & 1);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( mcompgin )
 	PORT_START("IN.0") // port A
@@ -2244,6 +2274,8 @@ static INPUT_PORTS_START( mcompgin )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_NAME("Score")
 	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
+
+// config
 
 void mcompgin_state::mcompgin(machine_config &config)
 {
@@ -2275,14 +2307,14 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Mego Mini-Vid: Break Free (manufactured in Japan)
   * PCB label: Mego 79 rev F
-  * NEC uCOM-43 MCU, label D553C 049
+  * NEC uCOM-43 MCU, label D553C 049, 1-bit sound
   * cyan VFD Futaba DM-4.5 91
 
-***************************************************************************/
+*******************************************************************************/
 
 class mvbfree_state : public hh_ucom4_state
 {
@@ -2334,7 +2366,7 @@ void mvbfree_state::speaker_w(u8 data)
 	m_speaker->level_w(data & 1);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( mvbfree )
 	PORT_START("IN.0") // port A
@@ -2350,6 +2382,8 @@ static INPUT_PORTS_START( mvbfree )
 	PORT_CONFSETTING(    0x00, "2" )
 	PORT_CONFSETTING(    0x08, "3" )
 INPUT_PORTS_END
+
+// config
 
 void mvbfree_state::mvbfree(machine_config &config)
 {
@@ -2386,11 +2420,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Takatoku Toys(T.T) Game Robot 9 「ゲームロボット九」
   * PCB label: GAME ROBOT 7520
-  * NEC uCOM-43 MCU, label TTGR-512 (die label NEC D557 511)
+  * NEC uCOM-43 MCU, label TTGR-512 (die label NEC D557 511), 1-bit sound
   * 9 lamps behind buttons
 
   known releases:
@@ -2401,7 +2435,7 @@ ROM_END
 
   Accessories were included for some of the minigames.
 
-***************************************************************************/
+*******************************************************************************/
 
 class grobot9_state : public hh_ucom4_state
 {
@@ -2449,7 +2483,7 @@ u8 grobot9_state::input_r()
 	return read_inputs(5);
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( grobot9 )
 	PORT_START("IN.0") // C0 port A
@@ -2479,6 +2513,8 @@ static INPUT_PORTS_START( grobot9 )
 	PORT_START("IN.4") // INT
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_V) PORT_CHANGED_MEMBER(DEVICE_SELF, hh_ucom4_state, single_interrupt_line, 0) PORT_NAME("Start-Pitch")
 INPUT_PORTS_END
+
+// config
 
 void grobot9_state::grobot9(machine_config &config)
 {
@@ -2511,11 +2547,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
-  Tomy(tronic) Cosmic Combat (manufactured in Japan)
+  Tomy Cosmic Combat (manufactured in Japan)
   * PCB label: 2E1019-E01
-  * NEC uCOM-44 MCU, label D552C 042
+  * NEC uCOM-44 MCU, label D552C 042, 1-bit sound
   * cyan VFD NEC FIP32AM18Y tube no. 0E, with blue window
   * color overlay: score/ufo/player: yellow (optional)
 
@@ -2526,7 +2562,7 @@ ROM_END
   - USA: UFO Attack, published by Tomy
   - Japan: Space Attack, published by Tomy
 
-***************************************************************************/
+*******************************************************************************/
 
 class tccombat_state : public hh_ucom4_state
 {
@@ -2570,7 +2606,7 @@ void tccombat_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( tccombat )
 	PORT_START("IN.0") // port A
@@ -2581,6 +2617,8 @@ static INPUT_PORTS_START( tccombat )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
 INPUT_PORTS_END
+
+// config
 
 void tccombat_state::tccombat(machine_config &config)
 {
@@ -2624,11 +2662,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
-  Tomy(tronic) Tennis (manufactured in Japan)
+  Tomy Tennis (manufactured in Japan)
   * PCB label: TOMY TN-04 TENNIS
-  * NEC uCOM-44 MCU, label D552C 048
+  * NEC uCOM-44 MCU, label D552C 048, 1-bit sound
   * cyan VFD NEC FIP11AM15T tube no. 0F, with overlay
 
   The initial release of this game was in 1979, known as Pro-Tennis,
@@ -2637,7 +2675,7 @@ ROM_END
   Press the Serve button to start, then hit the ball by pressing one of the
   positional buttons when the ball flies over it.
 
-***************************************************************************/
+*******************************************************************************/
 
 class tmtennis_state : public hh_ucom4_state
 {
@@ -2648,13 +2686,9 @@ public:
 
 	void tmtennis(machine_config &config);
 
-	DECLARE_INPUT_CHANGED_MEMBER(difficulty_switch) { set_clock(); }
-
-protected:
-	virtual void machine_reset() override;
+	DECLARE_INPUT_CHANGED_MEMBER(skill_switch);
 
 private:
-	void set_clock();
 	void update_display();
 	void grid_w(offs_t offset, u8 data);
 	void plate_w(offs_t offset, u8 data);
@@ -2662,20 +2696,14 @@ private:
 	u8 input_r(offs_t offset);
 };
 
-void tmtennis_state::machine_reset()
-{
-	hh_ucom4_state::machine_reset();
-	set_clock();
-}
-
 // handlers
 
-void tmtennis_state::set_clock()
+INPUT_CHANGED_MEMBER(tmtennis_state::skill_switch)
 {
 	// MCU clock is from an LC circuit oscillating by default at ~360kHz,
 	// but on PRO1, the difficulty switch puts a capacitor across the LC circuit
 	// to slow it down to ~260kHz.
-	m_maincpu->set_unscaled_clock((m_inputs[1]->read() & 0x100) ? 260000 : 360000);
+	m_maincpu->set_unscaled_clock((newval & 0x100) ? 260000 : 360000);
 }
 
 void tmtennis_state::update_display()
@@ -2714,7 +2742,7 @@ u8 tmtennis_state::input_r(offs_t offset)
 	return ~read_inputs(2) >> (offset*4);
 }
 
-// config
+// inputs
 
 /* Pro-Tennis physical button layout and labels are like this:
 
@@ -2738,9 +2766,9 @@ static INPUT_PORTS_START( tmtennis )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_J) PORT_NAME("P1 Button 6")
 
 	PORT_START("IN.1") // E1 port A/B
-	PORT_CONFNAME( 0x101, 0x100, DEF_STR( Difficulty ) ) PORT_CHANGED_MEMBER(DEVICE_SELF, tmtennis_state, difficulty_switch, 0)
+	PORT_CONFNAME( 0x101, 0x100, DEF_STR( Difficulty ) ) PORT_CHANGED_MEMBER(DEVICE_SELF, tmtennis_state, skill_switch, 0)
 	PORT_CONFSETTING(     0x001, "Practice" )
-	PORT_CONFSETTING(     0x100, "Pro 1" ) // -> difficulty_switch
+	PORT_CONFSETTING(     0x100, "Pro 1" ) // -> skill_switch
 	PORT_CONFSETTING(     0x000, "Pro 2" )
 	PORT_CONFNAME( 0x02, 0x00, DEF_STR( Players ) )
 	PORT_CONFSETTING(    0x00, "1" )
@@ -2753,10 +2781,12 @@ static INPUT_PORTS_START( tmtennis )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_D) PORT_NAME("P2 Button 6")
 INPUT_PORTS_END
 
+// config
+
 void tmtennis_state::tmtennis(machine_config &config)
 {
 	// basic machine hardware
-	NEC_D552(config, m_maincpu, 360000); // see set_clock
+	NEC_D552(config, m_maincpu, 260000); // see skill_switch
 	m_maincpu->read_a().set(FUNC(tmtennis_state::input_r));
 	m_maincpu->read_b().set(FUNC(tmtennis_state::input_r));
 	m_maincpu->write_c().set(FUNC(tmtennis_state::plate_w));
@@ -2796,11 +2826,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
-  Tomy(tronic) Pac-Man (manufactured in Japan)
+  Tomy Pac-Man (manufactured in Japan)
   * PCB label: TN-08 2E108E01
-  * NEC uCOM-43 MCU, label D553C 160
+  * NEC uCOM-43 MCU, label D553C 160, 1-bit sound
   * cyan/red/green VFD NEC FIP8AM18T no. 2-21
   * bright yellow round casing
 
@@ -2813,7 +2843,7 @@ ROM_END
   The game will start automatically after turning it on. This Pac Man refuses
   to eat dots with his butt, you can only eat them going right-to-left.
 
-***************************************************************************/
+*******************************************************************************/
 
 class tmpacman_state : public hh_ucom4_state
 {
@@ -2857,7 +2887,7 @@ void tmpacman_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( tmpacman )
 	PORT_START("IN.0") // port A
@@ -2872,6 +2902,8 @@ static INPUT_PORTS_START( tmpacman )
 	PORT_CONFSETTING(    0x01, "2" ) // PRO
 	PORT_BIT( 0x0e, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
+
+// config
 
 void tmpacman_state::tmpacman(machine_config &config)
 {
@@ -2915,11 +2947,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
-  Tomy(tronic) Scramble (manufactured in Japan)
+  Tomy Scramble (manufactured in Japan)
   * PCB label: TN-10 2E114E01
-  * NEC uCOM-43 MCU, label D553C 192
+  * NEC uCOM-43 MCU, label D553C 192, 1-bit sound
   * cyan/red/green VFD NEC FIP10CM20T no. 2-41
 
   known releases:
@@ -2928,7 +2960,7 @@ ROM_END
   - UK: Astro Blaster, published by Hales (Epoch Astro Command was named Scramble)
   - Germany: Rambler, published by Tomy
 
-***************************************************************************/
+*******************************************************************************/
 
 class tmscramb_state : public hh_ucom4_state
 {
@@ -2972,7 +3004,7 @@ void tmscramb_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( tmscramb )
 	PORT_START("IN.0") // port A
@@ -2986,6 +3018,8 @@ static INPUT_PORTS_START( tmscramb )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_2WAY
 	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
+
+// config
 
 void tmscramb_state::tmscramb(machine_config &config)
 {
@@ -3029,11 +3063,11 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
-  Tomy(tronic) Caveman (manufactured in Japan)
+  Tomy Caveman (manufactured in Japan)
   * PCB label: TN-12 2E114E03
-  * NEC uCOM-43 MCU, label D553C 209
+  * NEC uCOM-43 MCU, label D553C 209, 1-bit sound
   * cyan/red/green VFD NEC FIP8AM20T no. 2-42
 
   known releases:
@@ -3041,7 +3075,7 @@ ROM_END
   - USA: Caveman, published by Tandy
   - UK: Cave Man - Jr. Caveman vs Dinosaur, published by Grandstand
 
-***************************************************************************/
+*******************************************************************************/
 
 class tcaveman_state : public hh_ucom4_state
 {
@@ -3085,7 +3119,7 @@ void tcaveman_state::plate_w(offs_t offset, u8 data)
 	update_display();
 }
 
-// config
+// inputs
 
 static INPUT_PORTS_START( tcaveman )
 	PORT_START("IN.0") // port A
@@ -3096,6 +3130,8 @@ static INPUT_PORTS_START( tcaveman )
 	PORT_CONFSETTING(    0x00, "1" ) // AMA
 	PORT_CONFSETTING(    0x08, "2" ) // PRO
 INPUT_PORTS_END
+
+// config
 
 void tcaveman_state::tcaveman(machine_config &config)
 {
@@ -3138,21 +3174,21 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
 
   Tomy Alien Chase (manufactured in Japan)
   * PCB label: TN-16 2E121B01
-  * NEC uCOM-43 MCU, label D553C 258
-  * red/green VFD NEC FIP9AM24T, 2-sided*
+  * NEC uCOM-43 MCU, label D553C 258, 1-bit sound
+  * red/green VFD NEC FIP9AM24T (2-sided)
   * color overlay: top row: green, bottom: blue, middle: pink, other: yellow
 
-  *Player one views the VFD from the front (grid+filament side) while the
+  Player one views the VFD from the front (grid+filament side), while the
   opposite player views it from the back side (through the conductive traces),
   basically a mirror-image.
 
   To start the game, simply press [UP]. Hold a joystick direction to move around.
 
-***************************************************************************/
+*******************************************************************************/
 
 class alnchase_state : public hh_ucom4_state
 {
@@ -3203,7 +3239,7 @@ u8 alnchase_state::input_r()
 	return read_inputs(2);
 }
 
-// config
+// inputs
 
 /* physical button layout and labels are like this:
 
@@ -3227,10 +3263,10 @@ static INPUT_PORTS_START( alnchase )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
 
 	PORT_START("IN.1") // D0 port A
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2) // on non-mirrored view, swap P2 left/right
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  ) PORT_PLAYER(2) // "
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(2)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    ) PORT_PLAYER(2)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL // on non-mirrored view, swap P2 left/right
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL // "
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_COCKTAIL
 
 	PORT_START("IN.2") // port B
 	PORT_CONFNAME( 0x01, 0x01, DEF_STR( Players ) )
@@ -3241,6 +3277,8 @@ static INPUT_PORTS_START( alnchase )
 	PORT_CONFSETTING(    0x02, "2" ) // PRO
 	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
+
+// config
 
 void alnchase_state::alnchase(machine_config &config)
 {
@@ -3285,46 +3323,46 @@ ROM_END
 
 } // anonymous namespace
 
-/***************************************************************************
+/*******************************************************************************
 
   Game driver(s)
 
-***************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME      PARENT   CMP MACHINE   INPUT     CLASS           INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1979, ufombs,   0,        0, ufombs,   ufombs,   ufombs_state,   empty_init, "Bambino", "UFO Master-Blaster Station", MACHINE_SUPPORTS_SAVE )
-CONS( 1979, ssfball,  0,        0, ssfball,  ssfball,  ssfball_state,  empty_init, "Bambino", "Super Star Football (Bambino)", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, bmcfball, ssfball,  0, ssfball,  ssfball,  ssfball_state,  empty_init, "Bambino", "Football Classic (Bambino)", MACHINE_SUPPORTS_SAVE )
-CONS( 1979, bmsoccer, 0,        0, bmsoccer, bmsoccer, bmsoccer_state, empty_init, "Bambino", "Kick The Goal Soccer", MACHINE_SUPPORTS_SAVE )
-CONS( 1981, bmsafari, 0,        0, bmsafari, bmsafari, bmsafari_state, empty_init, "Bambino", "Safari (Bambino)", MACHINE_SUPPORTS_SAVE )
-CONS( 1980, splasfgt, 0,        0, splasfgt, splasfgt, splasfgt_state, empty_init, "Bambino", "Space Laser Fight", MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1979, ufombs,   0,        0,      ufombs,   ufombs,   ufombs_state,   empty_init, "Bambino", "UFO Master-Blaster Station", MACHINE_SUPPORTS_SAVE )
+SYST( 1979, ssfball,  0,        0,      ssfball,  ssfball,  ssfball_state,  empty_init, "Bambino", "Super Star Football (Bambino)", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, bmcfball, ssfball,  0,      ssfball,  ssfball,  ssfball_state,  empty_init, "Bambino", "Football Classic (Bambino)", MACHINE_SUPPORTS_SAVE )
+SYST( 1979, bmsoccer, 0,        0,      bmsoccer, bmsoccer, bmsoccer_state, empty_init, "Bambino", "Kick The Goal Soccer", MACHINE_SUPPORTS_SAVE )
+SYST( 1981, bmsafari, 0,        0,      bmsafari, bmsafari, bmsafari_state, empty_init, "Bambino", "Safari (Bambino)", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, splasfgt, 0,        0,      splasfgt, splasfgt, splasfgt_state, empty_init, "Bambino", "Space Laser Fight", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1980, bgunf,    0,        0, bgunf,    bgunf,    bgunf_state,    empty_init, "Bandai", "Gunfighter", MACHINE_SUPPORTS_SAVE )
-CONS( 1981, bgalaxn,  0,        0, bgalaxn,  bgalaxn,  bgalaxn_state,  empty_init, "Bandai", "Galaxian (Bandai)", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, bcclimbr, 0,        0, bcclimbr, bcclimbr, bcclimbr_state, empty_init, "Bandai", "Crazy Climber (Bandai)", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, bgunf,    0,        0,      bgunf,    bgunf,    bgunf_state,    empty_init, "Bandai", "Gunfighter", MACHINE_SUPPORTS_SAVE )
+SYST( 1981, bgalaxn,  0,        0,      bgalaxn,  bgalaxn,  bgalaxn_state,  empty_init, "Bandai", "Galaxian (Bandai)", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, bcclimbr, 0,        0,      bcclimbr, bcclimbr, bcclimbr_state, empty_init, "Bandai", "Crazy Climber (Bandai)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1980, tactix,   0,        0, tactix,   tactix,   tactix_state,   empty_init, "Castle Toy", "Tactix (Castle Toy)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1980, ctntune,  0,        0, ctntune,  ctntune,  ctntune_state,  empty_init, "Castle Toy", "Name That Tune (Castle Toy)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK ) // ***
+SYST( 1980, tactix,   0,        0,      tactix,   tactix,   tactix_state,   empty_init, "Castle Toy", "Tactix (Castle Toy)", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, ctntune,  0,        0,      ctntune,  ctntune,  ctntune_state,  empty_init, "Castle Toy", "Name That Tune (Castle Toy)", MACHINE_SUPPORTS_SAVE ) // ***
 
-CONS( 1980, invspace, 0,        0, invspace, invspace, invspace_state, empty_init, "Epoch", "Invader From Space", MACHINE_SUPPORTS_SAVE )
-CONS( 1980, efball,   0,        0, efball,   efball,   efball_state,   empty_init, "Epoch", "Electronic Football (Epoch)", MACHINE_SUPPORTS_SAVE )
-CONS( 1981, galaxy2,  0,        0, galaxy2,  galaxy2,  galaxy2_state,  empty_init, "Epoch", "Galaxy II (VFD Rev. D)", MACHINE_SUPPORTS_SAVE )
-CONS( 1981, galaxy2b, galaxy2,  0, galaxy2b, galaxy2,  galaxy2_state,  empty_init, "Epoch", "Galaxy II (VFD Rev. B)", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, astrocmd, 0,        0, astrocmd, astrocmd, astrocmd_state, empty_init, "Epoch", "Astro Command", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, edracula, 0,        0, edracula, edracula, edracula_state, empty_init, "Epoch", "Dracula (Epoch)", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, einspace, 0,        0,      einspace, einspace, einspace_state, empty_init, "Epoch", "Invader From Space", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, efball,   0,        0,      efball,   efball,   efball_state,   empty_init, "Epoch", "Electronic Football (Epoch)", MACHINE_SUPPORTS_SAVE )
+SYST( 1981, galaxy2,  0,        0,      galaxy2,  galaxy2,  galaxy2_state,  empty_init, "Epoch", "Galaxy II (VFD rev. D)", MACHINE_SUPPORTS_SAVE )
+SYST( 1981, galaxy2b, galaxy2,  0,      galaxy2b, galaxy2,  galaxy2_state,  empty_init, "Epoch", "Galaxy II (VFD rev. B)", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, astrocmd, 0,        0,      astrocmd, astrocmd, astrocmd_state, empty_init, "Epoch", "Astro Command", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, edracula, 0,        0,      edracula, edracula, edracula_state, empty_init, "Epoch", "Dracula (Epoch)", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1979, mcompgin, 0,        0, mcompgin, mcompgin, mcompgin_state, empty_init, "Mattel Electronics", "Computer Gin", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
+SYST( 1979, mcompgin, 0,        0,      mcompgin, mcompgin, mcompgin_state, empty_init, "Mattel Electronics", "Computer Gin", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )
 
-CONS( 1979, mvbfree,  0,        0, mvbfree,  mvbfree,  mvbfree_state,  empty_init, "Mego", "Mini-Vid: Break Free", MACHINE_SUPPORTS_SAVE )
+SYST( 1979, mvbfree,  0,        0,      mvbfree,  mvbfree,  mvbfree_state,  empty_init, "Mego", "Mini-Vid: Break Free", MACHINE_SUPPORTS_SAVE )
 
-CONS( 1980, grobot9,  0,        0, grobot9,  grobot9,  grobot9_state,  empty_init, "Takatoku Toys", "Game Robot 9", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK ) // some of the minigames: ***
+SYST( 1980, grobot9,  0,        0,      grobot9,  grobot9,  grobot9_state,  empty_init, "Takatoku Toys", "Game Robot 9", MACHINE_SUPPORTS_SAVE ) // some of the games: ***
 
-CONS( 1980, tccombat, 0,        0, tccombat, tccombat, tccombat_state, empty_init, "Tomy", "Cosmic Combat", MACHINE_SUPPORTS_SAVE )
-CONS( 1980, tmtennis, 0,        0, tmtennis, tmtennis, tmtennis_state, empty_init, "Tomy", "Tennis (Tomy)", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, tmpacman, 0,        0, tmpacman, tmpacman, tmpacman_state, empty_init, "Tomy", "Pac Man (Tomy)", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, tmscramb, 0,        0, tmscramb, tmscramb, tmscramb_state, empty_init, "Tomy", "Scramble (Tomy)", MACHINE_SUPPORTS_SAVE )
-CONS( 1982, tcaveman, 0,        0, tcaveman, tcaveman, tcaveman_state, empty_init, "Tomy", "Caveman (Tomy)", MACHINE_SUPPORTS_SAVE )
-CONS( 1984, alnchase, 0,        0, alnchase, alnchase, alnchase_state, empty_init, "Tomy", "Alien Chase", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, tccombat, 0,        0,      tccombat, tccombat, tccombat_state, empty_init, "Tomy", "Cosmic Combat", MACHINE_SUPPORTS_SAVE )
+SYST( 1980, tmtennis, 0,        0,      tmtennis, tmtennis, tmtennis_state, empty_init, "Tomy", "Tennis (Tomy)", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, tmpacman, 0,        0,      tmpacman, tmpacman, tmpacman_state, empty_init, "Tomy", "Pac Man (Tomy)", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, tmscramb, 0,        0,      tmscramb, tmscramb, tmscramb_state, empty_init, "Tomy", "Scramble (Tomy)", MACHINE_SUPPORTS_SAVE )
+SYST( 1982, tcaveman, 0,        0,      tcaveman, tcaveman, tcaveman_state, empty_init, "Tomy", "Caveman (Tomy)", MACHINE_SUPPORTS_SAVE )
+SYST( 1984, alnchase, 0,        0,      alnchase, alnchase, alnchase_state, empty_init, "Tomy", "Alien Chase", MACHINE_SUPPORTS_SAVE )
 
 // ***: As far as MAME is concerned, the game is emulated fine. But for it to be playable, it requires interaction
 // with other, unemulatable, things eg. game board/pieces, book, playing cards, pen & paper, etc.

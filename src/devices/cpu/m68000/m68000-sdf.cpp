@@ -94559,9 +94559,7 @@ void m68000_device::rte_df() // 4e73 ffff
 	// 302 rtr4
 	set_16h(m_at, m_dbin);
 	m_da[m_sp] = m_au;
-	m_sr = m_isr = m_ftu & (SR_CCR|SR_SR);
-	update_user_super();
-	update_interrupt();
+	m_new_sr = m_isr = m_ftu & (SR_CCR|SR_SR);
 	m_base_ssw = SSW_DATA | SSW_R;
 	m_edb = m_program.read_interruptible(m_aob & ~1);
 	m_icount -= 4;
@@ -94573,6 +94571,9 @@ void m68000_device::rte_df() // 4e73 ffff
 			m_inst_substate = 6;
 		return;
 	}
+	m_sr = m_new_sr;
+	update_user_super();
+	update_interrupt();
 	if(m_aob & 1) {
 		m_icount -= 4;
 		m_inst_state = S_ADDRESS_ERROR;

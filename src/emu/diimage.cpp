@@ -67,7 +67,10 @@ device_image_interface::device_image_interface(const machine_config &mconfig, de
 	: device_interface(device, "image")
 	, m_file()
 	, m_mame_file()
+	, m_default_region(-1)
+	, m_current_region(-1)
 	, m_software_part_ptr(nullptr)
+	, m_sequence_counter(0)
 	, m_readonly(false)
 	, m_created(false)
 	, m_create_format(0)
@@ -88,6 +91,17 @@ device_image_interface::~device_image_interface()
 {
 }
 
+//-------------------------------------------------
+//  add_region - register a region that may
+//  have a chd image
+//-------------------------------------------------
+void device_image_interface::add_region(std::string name, bool is_default)
+{
+	if (is_default)
+		m_default_region = m_possible_preset_regions.size();
+	m_possible_preset_regions.push_back(name);
+}
+
 
 //-------------------------------------------------
 //  interface_config_complete - perform any
@@ -99,6 +113,133 @@ void device_image_interface::interface_config_complete()
 {
 	// set brief and instance name
 	update_names();
+}
+
+//-------------------------------------------------
+//  check_preset_images - lookup the CHDs from the
+//  region(s), if any
+//-------------------------------------------------
+
+void device_image_interface::check_preset_images()
+{
+	if (!m_possible_preset_regions.empty())
+	{
+		for(const auto &r : m_possible_preset_regions)
+			m_preset_images.push_back(device().machine().rom_load().get_disk_handle(":" + r));
+		if (m_default_region != -1 && m_preset_images[m_default_region])
+			m_current_region = m_default_region;
+		else
+		{
+			for (m_current_region = 0; m_current_region != int(m_preset_images.size()) && !m_preset_images[m_current_region]; m_current_region++);
+			if (m_current_region == int(m_preset_images.size()))
+				fatalerror("%s: No configured region has an image\n", device().tag());
+		}
+		set_image_tag();
+		set_user_loadable(false);
+	}
+	else
+	{
+		std::string tag = device().owner()->tag();
+		auto *const chd = device().machine().rom_load().get_disk_handle(tag);
+		if (chd)
+		{
+			m_possible_preset_regions.emplace_back(std::move(tag));
+			m_preset_images.push_back(chd);
+			m_current_region = 0;
+			set_image_tag();
+			set_user_loadable(false);
+		}
+	}
+}
+
+//-------------------------------------------------
+//  has_preset_images - does the device have an
+//  image to retrieve through current_image_*
+//-------------------------------------------------
+
+bool device_image_interface::has_preset_images() const
+{
+	return !m_possible_preset_regions.empty();
+}
+
+//-------------------------------------------------
+//  has_preset_images - does the device have
+//  multiple preset images with user selection
+//-------------------------------------------------
+
+bool device_image_interface::has_preset_images_selection() const
+{
+	int icount = 0;
+	for (const auto *f : m_preset_images)
+		if (f)
+			icount ++;
+	return icount > 1;
+}
+
+
+//-------------------------------------------------
+//  preset_images_list -- generate the list of
+//  available image names
+//-------------------------------------------------
+
+std::vector<std::string> device_image_interface::preset_images_list() const
+{
+	std::vector<std::string> result;
+	for (unsigned int i = 0; i != m_preset_images.size(); i++)
+		if (m_preset_images[i])
+			result.push_back(m_possible_preset_regions[i]);
+	return result;
+}
+
+//-------------------------------------------------
+//  current_preset_image_id -- current image id,
+//  recomputed to ignore non-present images.
+//  returns -1 if not in preset mode
+//-------------------------------------------------
+
+int device_image_interface::current_preset_image_id() const
+{
+	if (m_current_region == -1)
+		return -1;
+	int id = 0;
+	for (int i = 0; i != m_current_region; i++)
+		if (m_preset_images[i])
+			id++;
+	return id;
+}
+
+//-------------------------------------------------
+//  current_preset_image_chd -- return the chd of
+//  the current active image, nullptr if non
+//-------------------------------------------------
+
+chd_file *device_image_interface::current_preset_image_chd() const
+{
+	if (m_current_region == -1)
+		return nullptr;
+	return m_preset_images[m_current_region];
+}
+
+//-------------------------------------------------
+//  switch_preset_image -- change of preset image
+//-------------------------------------------------
+
+void device_image_interface::switch_preset_image(int id)
+{
+	for (unsigned int i = 0; i != m_preset_images.size(); i++)
+		if (m_preset_images[i])
+		{
+			if(!id)
+			{
+				call_unload();
+				m_current_region = i;
+				call_load();
+				break;
+			}
+			id--;
+		}
+
+	return;
 }
 
 
@@ -115,9 +256,9 @@ void device_image_interface::set_image_filename(std::string_view filename)
 
 	// find the last "path separator"
 	auto iter = std::find_if(
-		m_image_name.rbegin(),
-		m_image_name.rend(),
-		[](char c) { return (c == '\\') || (c == '/') || (c == ':'); });
+			m_image_name.rbegin(),
+			m_image_name.rend(),
+			[] (char c) { return (c == '\\') || (c == '/') || (c == ':'); });
 
 	if (iter != m_image_name.rend())
 		m_basename.assign(iter.base(), m_image_name.end());
@@ -130,6 +271,20 @@ void device_image_interface::set_image_filename(std::string_view filename)
 	m_filetype = core_filename_extract_extension(m_basename, true);
 }
 
+//-------------------------------------------------
+//  set_image_tag - specifies the filename of
+//  an image as the device tag
+//-------------------------------------------------
+
+void device_image_interface::set_image_tag()
+{
+	m_image_name = device().owner()->tag();
+	m_working_directory = "";
+	m_basename = "";
+	m_basename_noext = "";
+	m_filetype = "";
+}
+
 
 //-------------------------------------------------
 //  is_filetype - check if the filetype matches
@@ -138,6 +293,17 @@ void device_image_interface::set_image_filename(std::string_view filename)
 bool device_image_interface::is_filetype(std::string_view candidate_filetype) const
 {
 	return util::streqlower(m_filetype, candidate_filetype);
+}
+
+
+//-------------------------------------------------
+//  add_media_change_notifier - subscribe for
+//  media change notifications
+//-------------------------------------------------
+
+util::notifier_subscription device_image_interface::add_media_change_notifier(delegate<void (media_change_event)> &&n)
+{
+	return m_media_change_notifier.subscribe(std::move(n));
 }
 
 
@@ -241,9 +407,8 @@ u8 *device_image_interface::get_software_region(std::string_view tag)
 	if (!loaded_through_softlist())
 		return nullptr;
 
-	std::string full_tag = util::string_format("%s:%s", device().tag(), tag);
-	memory_region *region = device().machine().root_device().memregion(full_tag);
-	return region != nullptr ? region->base() : nullptr;
+	memory_region *const region = device().memregion(tag);
+	return region ? region->base() : nullptr;
 }
 
 
@@ -253,9 +418,11 @@ u8 *device_image_interface::get_software_region(std::string_view tag)
 
 u32 device_image_interface::get_software_region_length(std::string_view tag)
 {
-	std::string full_tag = util::string_format("%s:%s", device().tag(), tag);
-	memory_region *region = device().machine().root_device().memregion(full_tag);
-	return region != nullptr ? region->bytes() : 0;
+	if (!loaded_through_softlist())
+		return 0;
+
+	memory_region *const region = device().memregion(tag);
+	return region ? region->bytes() : 0;
 }
 
 
@@ -656,15 +823,16 @@ std::error_condition device_image_interface::load_software(software_list_device 
 //  load_internal - core image loading
 //-------------------------------------------------
 
-std::error_condition device_image_interface::load_internal(std::string_view path, bool is_create, int create_format, util::option_resolution *create_args)
+std::pair<std::error_condition, std::string> device_image_interface::load_internal(std::string_view path, bool is_create, int create_format, util::option_resolution *create_args)
 {
-	std::error_condition err;
+	std::pair<std::error_condition, std::string> err;
 
 	// first unload the image
 	unload();
 
 	// we are now loading
 	m_is_loading = true;
+	m_sequence_counter++;
 
 	// record the filename
 	set_image_filename(path);
@@ -672,44 +840,46 @@ std::error_condition device_image_interface::load_internal(std::string_view path
 	if (core_opens_image_file())
 	{
 		// determine open plan
-		std::vector<u32> open_plan = determine_open_plan(is_create);
+		std::vector<u32> const open_plan = determine_open_plan(is_create);
 
 		// attempt to open the file in various ways
 		for (auto iter = open_plan.cbegin(); !m_file && iter != open_plan.cend(); iter++)
 		{
 			// open the file
-			err = load_image_by_path(*iter, path);
-			if (err && (err != std::errc::no_such_file_or_directory) && (err != std::errc::permission_denied))
-				goto done;
+			err.first = load_image_by_path(*iter, path);
+			if (err.first && (err.first != std::errc::no_such_file_or_directory) && (err.first != std::errc::permission_denied))
+				break;
 		}
 
 		// did we fail to find the file?
-		if (!m_file)
-		{
-			err = std::errc::no_such_file_or_directory;
-			goto done;
-		}
+		if (!err.first && !m_file)
+			err.first = std::errc::no_such_file_or_directory;
 	}
 
-	// call device load or create
-	m_create_format = create_format;
-	m_create_args = create_args;
-
-	if (!init_phase())
-		err = finish_load();
-
-done:
-	if (err)
+	if (!err.first)
 	{
+		// call device load or create
+		m_create_format = create_format;
+		m_create_args = create_args;
+
 		if (!init_phase())
-		{
-			if (device().machine().phase() == machine_phase::RUNNING)
-				device().popmessage("Error: Unable to %s image '%s': %s", is_create ? "create" : "load", path, err.message());
-			else
-				osd_printf_error("Error: Unable to %s image '%s': %s\n", is_create ? "create" : "load", path, err.message());
-		}
+			err = finish_load();
+	}
+
+	if (err.first)
+	{
+		osd_printf_error(
+				!err.second.empty()
+					? (is_create ? "Unable to create image '%1$s': %2$s (%3$s:%4$d %5$s)\n" : "Unable to load image '%1$s': %2$s (%3$s:%4$d %5$s)\n")
+					: (is_create ? "Unable to create image '%1$s': %5$s (%3$s:%4$d)\n" : "Unable to load image '%1$s': %5$s (%3$s:%4$d)\n"),
+				path,
+				err.second,
+				err.first.category().name(),
+				err.first.value(),
+				err.first.message());
 		clear();
 	}
+
 	return err;
 }
 
@@ -718,13 +888,13 @@ done:
 //  load - load an image into MAME
 //-------------------------------------------------
 
-std::error_condition device_image_interface::load(std::string_view path)
+std::pair<std::error_condition, std::string> device_image_interface::load(std::string_view path)
 {
 	// is this a reset on load item?
 	if (is_reset_on_load() && !init_phase())
 	{
 		reset_and_load(path);
-		return std::error_condition();
+		return std::make_pair(std::error_condition(), std::string());
 	}
 
 	return load_internal(path, false, 0, nullptr);
@@ -735,13 +905,13 @@ std::error_condition device_image_interface::load(std::string_view path)
 //  load_software - loads a softlist item by name
 //-------------------------------------------------
 
-std::error_condition device_image_interface::load_software(std::string_view software_identifier)
+std::pair<std::error_condition, std::string> device_image_interface::load_software(std::string_view software_identifier)
 {
 	// Is this a software part that forces a reset and we're at runtime?  If so, get this loaded through reset_and_load
 	if (is_reset_on_load() && !init_phase())
 	{
 		reset_and_load(software_identifier);
-		return std::error_condition();
+		return std::make_pair(std::error_condition(), std::string());
 	}
 
 	// Prepare to load
@@ -749,8 +919,9 @@ std::error_condition device_image_interface::load_software(std::string_view soft
 	m_is_loading = true;
 
 	// Check if there's a software list defined for this device and use that if we're not creating an image
-	std::error_condition err = load_software_part(software_identifier);
-	if (err)
+	std::pair<std::error_condition, std::string> err;
+	err.first = load_software_part(software_identifier);
+	if (err.first)
 	{
 		m_is_loading = false;
 		return err;
@@ -763,9 +934,10 @@ std::error_condition device_image_interface::load_software(std::string_view soft
 	m_image_name = m_full_software_name;
 	m_basename = m_full_software_name;
 	m_basename_noext = m_full_software_name;
-	m_filetype = use_software_list_file_extension_for_filetype() && m_mame_file != nullptr
-		? std::string(core_filename_extract_extension(m_mame_file->filename(), true))
-		: "";
+	if (use_software_list_file_extension_for_filetype() && m_mame_file)
+		m_filetype = core_filename_extract_extension(m_mame_file->filename(), true);
+	else
+		m_filetype.clear();
 
 	// Copy some image information when we have been loaded through a software list
 	software_info &swinfo = m_software_part_ptr->info();
@@ -775,16 +947,31 @@ std::error_condition device_image_interface::load_software(std::string_view soft
 		fatalerror("Each entry in an XML list must have all of the following fields: description, publisher, year!\n");
 
 	// set file type
-	std::string filename = (m_mame_file != nullptr) && (m_mame_file->filename() != nullptr)
+	std::string filename = (m_mame_file && m_mame_file->filename())
 			? m_mame_file->filename()
 			: "";
 	m_filetype = core_filename_extract_extension(filename, true);
 
 	// call finish_load if necessary
 	if (!init_phase())
-		return finish_load();
-	else
-		return std::error_condition();
+	{
+		err = finish_load();
+		if (err.first)
+		{
+			osd_printf_error(
+					!err.second.empty()
+						? "Unable to load software item '%1$s': %2$s (%3$s:%4$d %5$s)\n"
+						: "Unable to load software item '%1$s': %5$s (%3$s:%4$d)\n",
+					software_identifier,
+					err.second,
+					err.first.category().name(),
+					err.first.value(),
+					err.first.message());
+			clear();
+		}
+	}
+
+	return err;
 }
 
 
@@ -793,39 +980,38 @@ std::error_condition device_image_interface::load_software(std::string_view soft
 //  from core
 //-------------------------------------------------
 
-std::error_condition device_image_interface::finish_load()
+std::pair<std::error_condition, std::string> device_image_interface::finish_load()
 {
-	std::error_condition err;
+	std::pair<std::error_condition, std::string> err;
 
 	if (m_is_loading)
 	{
-		err = image_checkhash();
+		err.first = image_checkhash();
 
-		if (!err)
+		if (!err.first)
 		{
 			if (m_created)
-			{
 				err = call_create(m_create_format, m_create_args);
-			}
 			else
-			{
-				// using device load
-				err = call_load();
-			}
+				err = call_load(); // using device load
 		}
 	}
+
 	m_is_loading = false;
 	m_create_format = 0;
 	m_create_args = nullptr;
+	if (!err.first)
+		m_media_change_notifier(media_change_event::LOADED);
+
 	return err;
 }
 
 
 //-------------------------------------------------
-//  create - create a image
+//  create - create an image
 //-------------------------------------------------
 
-std::error_condition device_image_interface::create(std::string_view path)
+std::pair<std::error_condition, std::string> device_image_interface::create(std::string_view path)
 {
 	return create(path, nullptr, nullptr);
 }
@@ -835,13 +1021,14 @@ std::error_condition device_image_interface::create(std::string_view path)
 //  create - create a image
 //-------------------------------------------------
 
-std::error_condition device_image_interface::create(std::string_view path, const image_device_format *create_format, util::option_resolution *create_args)
+std::pair<std::error_condition, std::string> device_image_interface::create(std::string_view path, const image_device_format *create_format, util::option_resolution *create_args)
 {
 	int format_index = 0;
 	int cnt = 0;
 	for (auto &format : m_formatlist)
 	{
-		if (create_format == format.get()) {
+		if (create_format == format.get())
+		{
 			format_index = cnt;
 			break;
 		}
@@ -895,6 +1082,8 @@ void device_image_interface::clear() noexcept
 	m_software_list_name.clear();
 
 	m_hash.reset();
+
+	m_sequence_counter++;
 }
 
 
@@ -906,9 +1095,15 @@ void device_image_interface::unload()
 {
 	if (is_loaded() || loaded_through_softlist())
 	{
+		m_sequence_counter++;
 		call_unload();
+		clear();
+		m_media_change_notifier(media_change_event::UNLOADED);
 	}
-	clear();
+	else
+	{
+		clear(); // just to make sure everything is reset
+	}
 }
 
 

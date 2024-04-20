@@ -26,7 +26,6 @@
 #include "emu.h"
 #include "z80dma.h"
 
-#define LOG_GENERAL (1U << 0)
 #define LOG_DMA     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_DMA)
@@ -46,36 +45,13 @@ enum
 	INT_MATCH_END_OF_BLOCK
 };
 
-constexpr int COMMAND_RESET                         = 0xc3;
-constexpr int COMMAND_RESET_PORT_A_TIMING           = 0xc7;
-constexpr int COMMAND_RESET_PORT_B_TIMING           = 0xcb;
-constexpr int COMMAND_LOAD                          = 0xcf;
-constexpr int COMMAND_CONTINUE                      = 0xd3;
-constexpr int COMMAND_DISABLE_INTERRUPTS            = 0xaf;
-constexpr int COMMAND_ENABLE_INTERRUPTS             = 0xab;
-constexpr int COMMAND_RESET_AND_DISABLE_INTERRUPTS  = 0xa3;
-constexpr int COMMAND_ENABLE_AFTER_RETI             = 0xb7;
-constexpr int COMMAND_READ_STATUS_BYTE              = 0xbf;
-constexpr int COMMAND_REINITIALIZE_STATUS_BYTE      = 0x8b;
-constexpr int COMMAND_INITIATE_READ_SEQUENCE        = 0xa7;
-constexpr int COMMAND_FORCE_READY                   = 0xb3;
-constexpr int COMMAND_ENABLE_DMA                    = 0x87;
-constexpr int COMMAND_DISABLE_DMA                   = 0x83;
-constexpr int COMMAND_READ_MASK_FOLLOWS             = 0xbb;
-
-constexpr int TM_TRANSFER           = 0x01;
-constexpr int TM_SEARCH             = 0x02;
-constexpr int TM_SEARCH_TRANSFER    = 0x03;
-
 
 
 //**************************************************************************
 //  MACROS
 //**************************************************************************
 
-#define REGNUM(_m, _s)          (((_m)<<3) + (_s))
 #define GET_REGNUM(_r)          (&(_r) - &(WR0))
-#define REG(_m, _s)             m_regs[REGNUM(_m,_s)]
 #define WR0                     REG(0, 0)
 #define WR1                     REG(1, 0)
 #define WR2                     REG(2, 0)
@@ -135,7 +111,7 @@ constexpr int TM_SEARCH_TRANSFER    = 0x03;
 #define INT_ON_END_OF_BLOCK     (INTERRUPT_CTRL & 0x02)
 #define INT_ON_READY            (INTERRUPT_CTRL & 0x40)
 #define STATUS_AFFECTS_VECTOR   (INTERRUPT_CTRL & 0x20)
-
+#define PULSE_GENERATED         (INTERRUPT_CTRL & 0x04)
 
 
 //**************************************************************************
@@ -150,15 +126,20 @@ DEFINE_DEVICE_TYPE(Z80DMA, z80dma_device, "z80dma", "Z80 DMA Controller")
 //-------------------------------------------------
 
 z80dma_device::z80dma_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-	: device_t(mconfig, Z80DMA, tag, owner, clock)
+	: z80dma_device(mconfig, Z80DMA, tag, owner, clock)
+{
+}
+
+z80dma_device::z80dma_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
+	: device_t(mconfig, type, tag, owner, clock)
 	, device_z80daisy_interface(mconfig, *this)
 	, m_out_busreq_cb(*this)
 	, m_out_int_cb(*this)
 	, m_out_ieo_cb(*this)
 	, m_out_bao_cb(*this)
-	, m_in_mreq_cb(*this)
+	, m_in_mreq_cb(*this, 0)
 	, m_out_mreq_cb(*this)
-	, m_in_iorq_cb(*this)
+	, m_in_iorq_cb(*this, 0)
 	, m_out_iorq_cb(*this)
 {
 }
@@ -170,16 +151,6 @@ z80dma_device::z80dma_device(const machine_config &mconfig, const char *tag, dev
 
 void z80dma_device::device_start()
 {
-	// resolve callbacks
-	m_out_busreq_cb.resolve_safe();
-	m_out_int_cb.resolve_safe();
-	m_out_ieo_cb.resolve_safe();
-	m_out_bao_cb.resolve_safe();
-	m_in_mreq_cb.resolve_safe(0);
-	m_out_mreq_cb.resolve_safe();
-	m_in_iorq_cb.resolve_safe(0);
-	m_out_iorq_cb.resolve_safe();
-
 	// allocate timer
 	m_timer = timer_alloc(FUNC(z80dma_device::timerproc), this);
 
@@ -201,6 +172,7 @@ void z80dma_device::device_start()
 	save_item(NAME(m_rdy));
 	save_item(NAME(m_force_ready));
 	save_item(NAME(m_is_read));
+	save_item(NAME(m_is_pulse));
 	save_item(NAME(m_cur_cycle));
 	save_item(NAME(m_latch));
 }
@@ -220,6 +192,7 @@ void z80dma_device::device_reset()
 	m_read_num_follow = m_read_cur_follow = 0;
 	m_reset_pointer = 0;
 	m_is_read = false;
+	m_is_pulse = false;
 	memset(m_regs, 0, sizeof(m_regs));
 	memset(m_regs_follow, 0, sizeof(m_regs_follow));
 
@@ -494,6 +467,23 @@ TIMER_CALLBACK_MEMBER(z80dma_device::timerproc)
 	if (--m_cur_cycle)
 	{
 		return;
+	}
+
+	if (PULSE_GENERATED)
+	{
+		if (m_is_pulse)
+		{
+			m_out_int_cb(CLEAR_LINE);
+			m_is_pulse = false;
+		}
+		else
+		{
+			if ((m_byte_counter & 0xff)==PULSE_CTRL  && is_ready())
+			{
+				m_is_pulse = true;
+				m_out_int_cb(ASSERT_LINE);
+			}
+		}
 	}
 
 	if (m_is_read && !is_ready()) return;
@@ -860,7 +850,7 @@ TIMER_CALLBACK_MEMBER(z80dma_device::rdy_write_callback)
 //  rdy_w - ready input
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER(z80dma_device::rdy_w)
+void z80dma_device::rdy_w(int state)
 {
 	LOG("Z80DMA RDY: %d Active High: %d\n", state, READY_ACTIVE_HIGH);
 	machine().scheduler().synchronize(timer_expired_delegate(FUNC(z80dma_device::rdy_write_callback),this), state);
@@ -871,7 +861,7 @@ WRITE_LINE_MEMBER(z80dma_device::rdy_w)
 //  wait_w - wait input
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER(z80dma_device::wait_w)
+void z80dma_device::wait_w(int state)
 {
 }
 
@@ -880,6 +870,6 @@ WRITE_LINE_MEMBER(z80dma_device::wait_w)
 //  bai_w - bus acknowledge input
 //-------------------------------------------------
 
-WRITE_LINE_MEMBER(z80dma_device::bai_w)
+void z80dma_device::bai_w(int state)
 {
 }

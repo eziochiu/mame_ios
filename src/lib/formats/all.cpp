@@ -452,6 +452,10 @@
 #include "mz_cas.h"
 #endif
 
+#ifdef HAS_FORMATS_NABUPC_DSK
+#include "nabupc_dsk.h"
+#endif
+
 #ifdef HAS_FORMATS_NANOS_DSK
 #include "nanos_dsk.h"
 #endif
@@ -562,6 +566,10 @@
 
 #ifdef HAS_FORMATS_RK_CAS
 #include "rk_cas.h"
+#endif
+
+#ifdef HAS_FORMATS_ROLAND_DSK
+#include "roland_dsk.h"
 #endif
 
 #ifdef HAS_FORMATS_RX50_DSK
@@ -740,6 +748,10 @@
 #include "fs_isis.h"
 #endif
 
+#ifdef HAS_FORMATS_FS_HP98X5
+#include "fs_hp98x5.h"
+#endif
+
 void mame_formats_full_list(mame_formats_enumerator &en)
 {
 	en.category("Generic");
@@ -897,6 +909,11 @@ void mame_formats_full_list(mame_formats_enumerator &en)
 #endif
 #ifdef HAS_FORMATS_FS_HPLIF
 	en.add(fs::HPLIF); // fs_lif.h
+#endif
+#ifdef HAS_FORMATS_FS_HP98X5
+	en.add(fs::HP9825);
+	en.add(fs::HP9831);
+	en.add(fs::HP9845);
 #endif
 
 	en.category("Applix");
@@ -1212,6 +1229,11 @@ void mame_formats_full_list(mame_formats_enumerator &en)
 	en.add(FLOPPY_MTX_FORMAT); // mtx_dsk.h
 #endif
 
+	en.category("NABU PC");
+#ifdef HAS_FORMATS_NABUPC_DSK
+	en.add(FLOPPY_NABUPC_FORMAT); // nabupc_dsk.h
+#endif
+
 	en.category("Nanos");
 #ifdef HAS_FORMATS_NANOS_DSK
 	en.add(FLOPPY_NANOS_FORMAT); // nanos_dsk.h
@@ -1269,6 +1291,11 @@ void mame_formats_full_list(mame_formats_enumerator &en)
 	en.category("Regnecentralen");
 #ifdef HAS_FORMATS_RC759_DSK
 	en.add(FLOPPY_RC759_FORMAT); // rc759_dsk.h
+#endif
+
+	en.category("Roland");
+#ifdef HAS_FORMATS_ROLAND_DSK
+	en.add(FLOPPY_ROLAND_SDISK_FORMAT); // roland_dsk.h
 #endif
 
 	en.category("DEC");

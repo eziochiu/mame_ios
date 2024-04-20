@@ -98,32 +98,32 @@
  *
  *************************************/
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit0_2_w)
+void leland_80186_sound_device::pit0_2_w(int state)
 {
 	set_clock_line(2, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit1_0_w)
+void leland_80186_sound_device::pit1_0_w(int state)
 {
 	set_clock_line(3, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit1_1_w)
+void leland_80186_sound_device::pit1_1_w(int state)
 {
 	set_clock_line(4, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit1_2_w)
+void leland_80186_sound_device::pit1_2_w(int state)
 {
 	set_clock_line(5, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::i80186_tmr0_w)
+void leland_80186_sound_device::i80186_tmr0_w(int state)
 {
 	set_clock_line(6, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::i80186_tmr1_w)
+void leland_80186_sound_device::i80186_tmr1_w(int state)
 {
 	if (m_ext_base != nullptr)
 	{
@@ -493,7 +493,7 @@ void leland_80186_sound_device::command_hi_w(u8 data)
  *
  *************************************/
 
-void leland_80186_sound_device::delayed_response_r(int param)
+void leland_80186_sound_device::delayed_response_r(s32 param)
 {
 	int checkpc = param;
 	int pc = m_master->pc();

@@ -454,6 +454,9 @@ void software_list_device::internal_validity_check(validity_checker &valid)
 
 		if (m_shortname.length() > NAME_LEN_LIST)
 			osd_printf_error("%s: %s software list name must be %d characters or less\n", m_filename, m_shortname, NAME_LEN_LIST);
+
+		if (std::find_if_not(m_shortname.begin(), m_shortname.end(), valid_name_char) != m_shortname.end())
+			osd_printf_error("%s: %s software list name contains invalid characters\n", m_filename, m_shortname);
 	}
 
 	// now check the software items
@@ -573,6 +576,8 @@ void software_list_device::internal_validity_check(validity_checker &valid)
 						current_length = ROMREGION_GETLENGTH(romp);
 						if (!data_area_map.emplace(romp->name(), current_length).second)
 							osd_printf_error("%s: %s part %s data area has duplicate name '%s'\n", m_filename, shortname, part.name(), romp->name());
+						if (current_length == 0)
+							osd_printf_error("%s: %s part %s data area '%s' has zero length\n", m_filename, shortname, part.name(), romp->name());
 					}
 					else if (ROMENTRY_ISFILE(romp)) // if this is a file, make sure it is properly formatted
 					{

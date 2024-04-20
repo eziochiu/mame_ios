@@ -165,7 +165,7 @@ public:
 
 protected:
 	virtual void recompute_metrics(uint32_t width, uint32_t height, float aspect) override;
-	virtual void custom_render(void *selectedref, float top, float bottom, float x, float y, float x2, float y2) override;
+	virtual void custom_render(uint32_t flags, void *selectedref, float top, float bottom, float x, float y, float x2, float y2) override;
 
 	virtual bool custom_ui_back() override { return !m_search.empty(); }
 
@@ -321,7 +321,8 @@ void menu_add_change_folder::populate()
 	}
 
 	// sort
-	std::collate<wchar_t> const &coll = std::use_facet<std::collate<wchar_t> >(std::locale());
+	std::locale const lcl;
+	std::collate<wchar_t> const &coll = std::use_facet<std::collate<wchar_t> >(lcl);
 	std::sort(
 			dirnames.begin(),
 			dirnames.end(),
@@ -355,7 +356,7 @@ void menu_add_change_folder::recompute_metrics(uint32_t width, uint32_t height, 
 //  perform our special rendering
 //-------------------------------------------------
 
-void menu_add_change_folder::custom_render(void *selectedref, float top, float bottom, float origx1, float origy1, float origx2, float origy2)
+void menu_add_change_folder::custom_render(uint32_t flags, void *selectedref, float top, float bottom, float origx1, float origy1, float origx2, float origy2)
 {
 	std::string const toptext[] = {
 			util::string_format(
@@ -446,7 +447,7 @@ public:
 
 protected:
 	virtual void recompute_metrics(uint32_t width, uint32_t height, float aspect) override;
-	virtual void custom_render(void *selectedref, float top, float bottom, float x, float y, float x2, float y2) override;
+	virtual void custom_render(uint32_t flags, void *selectedref, float top, float bottom, float x, float y, float x2, float y2) override;
 
 private:
 	enum
@@ -556,7 +557,7 @@ void menu_display_actual::recompute_metrics(uint32_t width, uint32_t height, flo
 //  perform our special rendering
 //-------------------------------------------------
 
-void menu_display_actual::custom_render(void *selectedref, float top, float bottom, float origx1, float origy1, float origx2, float origy2)
+void menu_display_actual::custom_render(uint32_t flags, void *selectedref, float top, float bottom, float origx1, float origy1, float origx2, float origy2)
 {
 	float const maxwidth(draw_text_box(
 			std::begin(m_folders), std::end(m_folders),

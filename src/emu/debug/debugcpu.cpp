@@ -25,7 +25,6 @@
 #include "uiinput.h"
 
 #include "corestr.h"
-#include "coreutil.h"
 #include "osdepend.h"
 #include "xmlfile.h"
 
@@ -94,7 +93,7 @@ debugger_cpu::debugger_cpu(running_machine &machine)
 	for (int regnum = 0; regnum < NUM_TEMP_VARIABLES; regnum++)
 	{
 		char symname[10];
-		sprintf(symname, "temp%d", regnum);
+		snprintf(symname, 10, "temp%d", regnum);
 		m_symtable->add(symname, symbol_table::READ_WRITE, &m_tempvar[regnum]);
 	}
 }
@@ -1727,7 +1726,7 @@ u32 device_debug::compute_opcode_crc32(offs_t pc) const
 	buffer.data_get(pc, dasmresult & util::disasm_interface::LENGTHMASK, true, opbuf);
 
 	// return a CRC of the exact count of opcode bytes
-	return core_crc32(0, &opbuf[0], opbuf.size());
+	return util::crc32_creator::simple(&opbuf[0], opbuf.size());
 }
 
 

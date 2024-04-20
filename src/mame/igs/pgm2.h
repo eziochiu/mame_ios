@@ -65,6 +65,7 @@ public:
 	void init_kov3_101();
 	void init_kov3_100();
 	void init_kof98umh();
+	void init_bubucar();
 
 	void pgm2_ramrom(machine_config &config);
 	void pgm2_lores(machine_config &config);
@@ -117,8 +118,8 @@ private:
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
 
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	DECLARE_WRITE_LINE_MEMBER(screen_vblank);
-	DECLARE_WRITE_LINE_MEMBER(irq);
+	void screen_vblank(int state);
+	void irq(int state);
 
 	TIMER_DEVICE_CALLBACK_MEMBER(mcu_interrupt);
 

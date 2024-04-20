@@ -112,7 +112,7 @@ private:
 	TILE_GET_INFO_MEMBER(get_tile_info);
 	void palette(palette_device &palette) const;
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	DECLARE_WRITE_LINE_MEMBER(screen_vblank);
+	void screen_vblank(int state);
 	INTERRUPT_GEN_MEMBER(irq);
 	uint8_t collision_check(rectangle& rect);
 	inline int get_sprite_code(int n);
@@ -123,8 +123,6 @@ private:
 	void main_map(address_map &map);
 };
 
-
-// video
 
 void sprint2_state::palette(palette_device &palette) const
 {
@@ -225,7 +223,7 @@ uint32_t sprint2_state::screen_update(screen_device &screen, bitmap_ind16 &bitma
 }
 
 
-WRITE_LINE_MEMBER(sprint2_state::screen_vblank)
+void sprint2_state::screen_vblank(int state)
 {
 	// rising edge
 	if (state)
@@ -287,8 +285,6 @@ WRITE_LINE_MEMBER(sprint2_state::screen_vblank)
 	}
 }
 
-
-// machine
 
 void sprint2_state::machine_start()
 {

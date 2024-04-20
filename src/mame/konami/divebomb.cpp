@@ -107,7 +107,7 @@ To verify against original HW:
 
 
 // configurable logging
-#define LOG_ROZ     (1U <<  1)
+#define LOG_ROZ     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_ROZ)
 
@@ -193,8 +193,6 @@ private:
 	void spritecpu_map(address_map &map);
 };
 
-
-// video
 
 /*************************************
  *
@@ -368,8 +366,6 @@ uint32_t divebomb_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 /*************************************
  *

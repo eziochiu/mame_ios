@@ -44,6 +44,8 @@ public:
 	virtual void machine_reset() override;
 
 	uint8_t cart_r(offs_t offset);
+	void cart_w(offs_t offset, uint8_t data);
+
 	uint8_t paddle_1_r();
 	uint8_t paddle_2_r();
 	void paddle_off_w(uint8_t data);
@@ -53,7 +55,7 @@ public:
 	TIMER_CALLBACK_MEMBER(paddle_irqreset_callback);
 	TIMER_CALLBACK_MEMBER(paddle_pulse_callback);
 	TIMER_DEVICE_CALLBACK_MEMBER(paddle_update_callback);
-	DECLARE_WRITE_LINE_MEMBER(coleco_vdp_interrupt);
+	void coleco_vdp_interrupt(int state);
 
 	uint8_t coleco_paddle_read(int port, int joy_mode, uint8_t joy_status);
 	uint8_t coleco_scan_paddles(uint8_t *joy_status0, uint8_t *joy_status1);

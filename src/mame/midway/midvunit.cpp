@@ -30,6 +30,8 @@
 #include "cpu/adsp2100/adsp2100.h"
 #include "machine/nvram.h"
 
+#include "speaker.h"
+
 #include "crusnusa.lh"
 
 
@@ -57,6 +59,7 @@ void midvunit_state::machine_start()
 	save_item(NAME(m_comm_data));
 
 	m_optional_drivers.resolve();
+	m_wheel_motor.resolve();
 }
 
 
@@ -177,11 +180,10 @@ void midvunit_state::midvunit_control_w(offs_t offset, uint32_t data, uint32_t m
 	/* bit 7 is the LED */
 
 	/* bit 3 is the watchdog */
-	if ((olddata ^ m_control_data) & 0x0008)
-		m_watchdog->watchdog_reset();
+	m_watchdog->reset_line_w(BIT(m_control_data, 3));
 
 	/* bit 1 is the DCS sound reset */
-	m_dcs->reset_w((m_control_data >> 1) & 1);
+	m_dcs->reset_w(BIT(m_control_data, 1));
 
 	/* log anything unusual */
 	if ((olddata ^ m_control_data) & ~0x00e8)
@@ -195,11 +197,10 @@ void midvunit_state::crusnwld_control_w(offs_t offset, uint32_t data, uint32_t m
 	COMBINE_DATA(&m_control_data);
 
 	/* bit 11 is the DCS sound reset */
-	m_dcs->reset_w((m_control_data >> 11) & 1);
+	m_dcs->reset_w(BIT(m_control_data, 11));
 
 	/* bit 9 is the watchdog */
-	if ((olddata ^ m_control_data) & 0x0200)
-		m_watchdog->watchdog_reset();
+	m_watchdog->reset_line_w(BIT(m_control_data, 9));
 
 	/* bit 8 is the LED */
 
@@ -435,7 +436,7 @@ void midvunit_state::midvunit_wheel_board_w(uint32_t data)
 					logerror("Wheel board (ATODRDZ) = %02X\n", arg);
 					break;
 				case 4: // WHLCTLZ
-					output().set_value("wheel", arg);
+					m_wheel_motor = arg;
 					//logerror("Wheel board (U4 74HC574; Motor) = %02X\n", arg);
 					break;
 				case 5: // DRVCTLZ
@@ -562,12 +563,10 @@ void midvunit_state::midvplus_misc_w(offs_t offset, uint32_t data, uint32_t mem_
 	switch (offset)
 	{
 		case 0:
-			/* bit 0x10 resets watchdog */
-			if ((olddata ^ m_midvplus_misc[offset]) & 0x0010)
-			{
-				m_watchdog->watchdog_reset();
-				logit = false;
-			}
+			/* bit 4 resets watchdog */
+			m_watchdog->reset_line_w(BIT(data, 4));
+
+			logit = bool((olddata ^ m_midvplus_misc[offset]) & ~0x0010);
 			break;
 
 		case 3:
@@ -1108,7 +1107,11 @@ void midvunit_state::midvunit(machine_config &config)
 	m_adc->ch3_callback().set_ioport("BRAKE");
 
 	/* sound hardware */
-	DCS_AUDIO_2K(config, "dcs", 0);
+	SPEAKER(config, "mono").front_center();
+
+	DCS_AUDIO_2K(config, m_dcs, 0);
+	m_dcs->set_maincpu_tag(m_maincpu);
+	m_dcs->add_route(0, "mono", 1.0);
 }
 
 
@@ -1144,14 +1147,25 @@ void midvunit_state::midvplus(machine_config &config)
 	ATA_INTERFACE(config, m_ata).options(ata_devices, "hdd", nullptr, true);
 
 	MIDWAY_IOASIC(config, m_midway_ioasic, 0);
+	m_midway_ioasic->in_port_cb<0>().set_ioport("DIPS");
+	m_midway_ioasic->in_port_cb<1>().set_ioport("SYSTEM");
+	m_midway_ioasic->in_port_cb<2>().set_ioport("IN1");
+	m_midway_ioasic->in_port_cb<3>().set_ioport("IN2");
+	m_midway_ioasic->set_dcs_tag(m_dcs);
 	m_midway_ioasic->set_shuffle(0);
 	m_midway_ioasic->set_upper(452); /* no alternates */
 	m_midway_ioasic->set_yearoffs(94);
 
 	/* sound hardware */
+	SPEAKER(config, "lspeaker").front_left();
+	SPEAKER(config, "rspeaker").front_right();
+
 	DCS2_AUDIO_2115(config, m_dcs, 0);
+	m_dcs->set_maincpu_tag(m_maincpu);
 	m_dcs->set_dram_in_mb(2);
 	m_dcs->set_polling_offset(0x3839);
+	m_dcs->add_route(0, "rspeaker", 1.0);
+	m_dcs->add_route(1, "lspeaker", 1.0);
 }
 
 
@@ -2036,7 +2050,7 @@ ROM_START( wargods ) /* Boot EPROM Version 1.0, Game Type: 452 (11/07/1996) */
 	ROM_REGION32_LE( 0x1000000, "user1", 0 )
 	ROM_LOAD( "u41.rom", 0x000000, 0x20000, CRC(398c54cc) SHA1(6c4b5d6ec5c844dcbf181f9d86a9196a088ed2db) )
 
-	DISK_REGION( "ata:0:hdd:image" )
+	DISK_REGION( "ata:0:hdd" )
 	DISK_IMAGE( "wargods_11-07-1996", 0, SHA1(7585bc65b1038589cb59d3e7c56e08ca9d7015b8) ) // HDD had a label of 10-09-1996, but the game reports
 																						  // a version of 11-07-1996, so it was probably upgraded
 																						  // in the field.
@@ -2051,7 +2065,7 @@ ROM_START( wargodsa ) /* Boot EPROM Version 1.0, Game Type: 452 (08/15/1996) */
 	ROM_REGION32_LE( 0x1000000, "user1", 0 )
 	ROM_LOAD( "u41.rom", 0x000000, 0x20000, CRC(398c54cc) SHA1(6c4b5d6ec5c844dcbf181f9d86a9196a088ed2db) )
 
-	DISK_REGION( "ata:0:hdd:image" )
+	DISK_REGION( "ata:0:hdd" )
 	DISK_IMAGE( "wargods_08-15-1996", 0, SHA1(5dee00be40c315fbb1d6e3994dae8e498ab87fb2) )
 
 	ROM_REGION( 0x2000, "serial_security_pic", 0 ) // security PIC (provides game ID code and serial number)
@@ -2065,7 +2079,7 @@ ROM_START( wargodsb ) /* Boot EPROM Version 1.0, Game Type: 452 (12/11/1995) */
 	ROM_REGION32_LE( 0x1000000, "user1", 0 )
 	ROM_LOAD( "u41.rom", 0x000000, 0x20000, CRC(398c54cc) SHA1(6c4b5d6ec5c844dcbf181f9d86a9196a088ed2db) )
 
-	DISK_REGION( "ata:0:hdd:image" )
+	DISK_REGION( "ata:0:hdd" )
 	DISK_IMAGE( "wargods_12-11-1995", 0, SHA1(141063f95867fdcc4b15c844e510696604a70c6a) )
 
 	ROM_REGION( 0x2000, "serial_security_pic", 0 ) // security PIC (provides game ID code and serial number)
@@ -2188,13 +2202,13 @@ GAMEL( 1996, crusnwld19, crusnwld, crusnwld, crusnwld, midvunit_state, init_crus
 GAMEL( 1996, crusnwld17, crusnwld, crusnwld, crusnwld, midvunit_state, init_crusnwld, ROT0, "Midway", "Cruis'n World (v1.7)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
 GAMEL( 1996, crusnwld13, crusnwld, crusnwld, crusnwld, midvunit_state, init_crusnwld, ROT0, "Midway", "Cruis'n World (v1.3)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
 
-GAMEL( 1997, offroadc,  0,        offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.63)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
-GAMEL( 1997, offroadc5, offroadc, offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.50)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
-GAMEL( 1997, offroadc4, offroadc, offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.40)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
-GAMEL( 1997, offroadc3, offroadc, offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.30)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
-GAMEL( 1997, offroadc1, offroadc, offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.10)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
-GAMEL( 1997, offroadc0, offroadc, offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.00)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
+GAMEL( 1997, offroadc,  0,         offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.63)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
+GAMEL( 1997, offroadc5, offroadc,  offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.50)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
+GAMEL( 1997, offroadc4, offroadc,  offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.40)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
+GAMEL( 1997, offroadc3, offroadc,  offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.30)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
+GAMEL( 1997, offroadc1, offroadc,  offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.10)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
+GAMEL( 1997, offroadc0, offroadc,  offroadc, offroadc, midvunit_state, init_offroadc, ROT0, "Midway", "Off Road Challenge (v1.00)", MACHINE_SUPPORTS_SAVE, layout_crusnusa )
 
-GAME( 1995, wargods,   0,        midvplus, wargods, midvunit_state,  init_wargods,  ROT0, "Midway", "War Gods (HD 10/09/1996 - Dual Resolution)", MACHINE_SUPPORTS_SAVE )
-GAME( 1995, wargodsa,  wargods,  midvplus, wargodsa, midvunit_state, init_wargods,  ROT0, "Midway", "War Gods (HD 08/15/1996)", MACHINE_SUPPORTS_SAVE )
-GAME( 1995, wargodsb,  wargods,  midvplus, wargodsa, midvunit_state, init_wargods,  ROT0, "Midway", "War Gods (HD 12/11/1995)", MACHINE_SUPPORTS_SAVE )
+GAME(  1995, wargods,   0,         midvplus, wargods,  midvunit_state, init_wargods,  ROT0, "Midway", "War Gods (HD 10/09/1996 - Dual Resolution)", MACHINE_SUPPORTS_SAVE )
+GAME(  1995, wargodsa,  wargods,   midvplus, wargodsa, midvunit_state, init_wargods,  ROT0, "Midway", "War Gods (HD 08/15/1996)", MACHINE_SUPPORTS_SAVE )
+GAME(  1995, wargodsb,  wargods,   midvplus, wargodsa, midvunit_state, init_wargods,  ROT0, "Midway", "War Gods (HD 12/11/1995)", MACHINE_SUPPORTS_SAVE )

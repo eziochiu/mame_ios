@@ -43,7 +43,7 @@
 
 
 // configurable logging
-#define LOG_COLBANK     (1U <<  1)
+#define LOG_COLBANK     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_COLBANK)
 
@@ -99,8 +99,6 @@ private:
 	void main_map(address_map &map);
 };
 
-
-// video
 
 /*************************************
  *
@@ -207,8 +205,6 @@ void rampart_state::bitmap_render(bitmap_ind16 &bitmap, const rectangle &cliprec
 	}
 }
 
-
-// machine
 
 /*************************************
  *

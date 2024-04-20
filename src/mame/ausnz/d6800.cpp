@@ -85,7 +85,7 @@ private:
 	void d6800_cassette_w(uint8_t data);
 	uint8_t d6800_keyboard_r();
 	void d6800_keyboard_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER( d6800_screen_w );
+	void d6800_screen_w(int state);
 	uint32_t screen_update_d6800(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(rtc_interrupt);
 	TIMER_DEVICE_CALLBACK_MEMBER(kansas_w);
@@ -240,7 +240,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(d6800_state::kansas_r)
 }
 
 
-WRITE_LINE_MEMBER( d6800_state::d6800_screen_w )
+void d6800_state::d6800_screen_w(int state)
 {
 	m_cb2 = state;
 	m_maincpu->set_unscaled_clock(state ? 589744 : 1e6); // effective clock is ~590kHz while screen is on
@@ -346,11 +346,7 @@ QUICKLOAD_LOAD_MEMBER(d6800_state::quickload_cb)
 
 	u32 const quick_length = image.length();
 	if (quick_length > 0xe00)
-	{
-		osd_printf_error("%s: File exceeds 3854 bytes\n", image.basename());
-		image.message(" File exceeds 3584 bytes");
-		return image_error::INVALIDIMAGE;
-	}
+		return std::make_pair(image_error::INVALIDIMAGE, "File exceeds 3584 bytes");
 
 	address_space &space = m_maincpu->space(AS_PROGRAM);
 	for (u32 i = 0; i < quick_length; i++)
@@ -370,7 +366,7 @@ QUICKLOAD_LOAD_MEMBER(d6800_state::quickload_cb)
 	// Start the quickload
 	m_maincpu->set_pc(exec_addr);
 
-	return std::error_condition();
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 void d6800_state::d6800(machine_config &config)
@@ -396,7 +392,7 @@ void d6800_state::d6800(machine_config &config)
 	BEEP(config, "beeper", 1200).add_route(ALL_OUTPUTS, "mono", 0.50);
 
 	/* devices */
-	PIA6821(config, m_pia, 0);
+	PIA6821(config, m_pia);
 	m_pia->readpa_handler().set(FUNC(d6800_state::d6800_keyboard_r));
 	m_pia->readpb_handler().set(FUNC(d6800_state::d6800_cassette_r));
 	m_pia->writepa_handler().set(FUNC(d6800_state::d6800_keyboard_w));

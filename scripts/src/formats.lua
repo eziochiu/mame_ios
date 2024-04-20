@@ -25,6 +25,7 @@ project "formats"
 		MAME_DIR .. "src/lib/util",
 		MAME_DIR .. "3rdparty",
 		GEN_DIR,
+		ext_includedir("flac"),
 		ext_includedir("zlib"),
 	}
 
@@ -37,6 +38,8 @@ project "formats"
 
 		MAME_DIR .. "src/lib/formats/cassimg.cpp",
 		MAME_DIR .. "src/lib/formats/cassimg.h",
+		MAME_DIR .. "src/lib/formats/flacfile.cpp",
+		MAME_DIR .. "src/lib/formats/flacfile.h",
 		MAME_DIR .. "src/lib/formats/wavfile.cpp",
 		MAME_DIR .. "src/lib/formats/wavfile.h",
 
@@ -75,6 +78,8 @@ project "formats"
 
 		MAME_DIR .. "src/lib/formats/fsmgr.h",
 		MAME_DIR .. "src/lib/formats/fsmgr.cpp",
+		MAME_DIR .. "src/lib/formats/fsblk.h",
+		MAME_DIR .. "src/lib/formats/fsblk.cpp",
 		MAME_DIR .. "src/lib/formats/fsblk_vec.h",
 		MAME_DIR .. "src/lib/formats/fsblk_vec.cpp",
 		MAME_DIR .. "src/lib/formats/fs_unformatted.h",
@@ -428,6 +433,18 @@ if opt_tool(FORMATS, "BASICDSK") then
 	files {
 		MAME_DIR.. "src/lib/formats/basicdsk.cpp",
 		MAME_DIR.. "src/lib/formats/basicdsk.h",
+	}
+end
+
+--------------------------------------------------
+--
+--@src/lib/formats/bk0010_dsk.h,FORMATS["BK0010_DSK"] = true
+--------------------------------------------------
+
+if opt_tool(FORMATS, "BK0010_DSK") then
+	files {
+		MAME_DIR.. "src/lib/formats/bk0010_dsk.cpp",
+		MAME_DIR.. "src/lib/formats/bk0010_dsk.h",
 	}
 end
 
@@ -1129,6 +1146,18 @@ end
 
 --------------------------------------------------
 --
+--@src/lib/formats/idpart_dsk.h,FORMATS["IDPART_DSK"] = true
+--------------------------------------------------
+
+if opt_tool(FORMATS, "IDPART_DSK") then
+	files {
+		MAME_DIR.. "src/lib/formats/idpart_dsk.cpp",
+		MAME_DIR.. "src/lib/formats/idpart_dsk.h",
+	}
+end
+
+--------------------------------------------------
+--
 --@src/lib/formats/img_dsk.h,FORMATS["IMG_DSK"] = true
 --------------------------------------------------
 
@@ -1400,6 +1429,18 @@ if opt_tool(FORMATS, "MZ_CAS") then
 	files {
 		MAME_DIR.. "src/lib/formats/mz_cas.cpp",
 		MAME_DIR.. "src/lib/formats/mz_cas.h",
+	}
+end
+
+--------------------------------------------------
+--
+--@src/lib/formats/nabupc_dsk.h,FORMATS["NABUPC_DSK"] = true
+--------------------------------------------------
+
+if opt_tool(FORMATS, "NABUPC_DSK") then
+	files {
+		MAME_DIR.. "src/lib/formats/nabupc_dsk.cpp",
+		MAME_DIR.. "src/lib/formats/nabupc_dsk.h",
 	}
 end
 
@@ -1706,6 +1747,18 @@ end
 
 --------------------------------------------------
 --
+--@src/lib/formats/roland_dsk.h,FORMATS["ROLAND_DSK"] = true
+--------------------------------------------------
+
+if opt_tool(FORMATS, "ROLAND_DSK") then
+	files {
+		MAME_DIR.. "src/lib/formats/roland_dsk.cpp",
+		MAME_DIR.. "src/lib/formats/roland_dsk.h",
+	}
+end
+
+--------------------------------------------------
+--
 --@src/lib/formats/rx50_dsk.h,FORMATS["RX50_DSK"] = true
 --------------------------------------------------
 
@@ -1917,6 +1970,18 @@ if opt_tool(FORMATS, "TI99_DSK") then
 	files {
 		MAME_DIR.. "src/lib/formats/ti99_dsk.cpp",
 		MAME_DIR.. "src/lib/formats/ti99_dsk.h",
+	}
+end
+
+--------------------------------------------------
+--
+--@src/lib/formats/tibdd001_dsk.h,FORMATS["TIBDD001_DSK"] = true
+--------------------------------------------------
+
+if opt_tool(FORMATS, "TIBDD001_DSK") then
+	files {
+		MAME_DIR.. "src/lib/formats/tibdd001_dsk.cpp",
+		MAME_DIR.. "src/lib/formats/tibdd001_dsk.h",
 	}
 end
 
@@ -2277,6 +2342,18 @@ if opt_tool(FORMATS, "FS_ISIS") then
 	files {
 		MAME_DIR.. "src/lib/formats/fs_isis.cpp",
 		MAME_DIR.. "src/lib/formats/fs_isis.h",
+	}
+end
+
+--------------------------------------------------
+--
+--@src/lib/formats/fs_hp98x5.h,FORMATS["FS_HP98X5"] = true
+--------------------------------------------------
+
+if opt_tool(FORMATS, "FS_HP98X5") then
+	files {
+		MAME_DIR.. "src/lib/formats/fs_hp98x5.cpp",
+		MAME_DIR.. "src/lib/formats/fs_hp98x5.h",
 	}
 end
 

@@ -11,6 +11,8 @@
 #include "emu.h"
 #include "luaengine.ipp"
 
+#include <cstring>
+
 
 namespace {
 
@@ -26,7 +28,7 @@ T region_read(memory_region &region, offs_t address)
 	const offs_t lowmask = region.bytewidth() - 1;
 	for (int i = 0; i < sizeof(T); i++)
 	{
-		int addr = region.endianness() == ENDIANNESS_LITTLE ? address + sizeof(T) - 1 - i : address + i;
+		int addr = (region.endianness() == ENDIANNESS_LITTLE) ? (address + sizeof(T) - 1 - i) : (address + i);
 		if (addr < region.bytes())
 		{
 			if constexpr (sizeof(T) > 1)
@@ -52,7 +54,7 @@ void region_write(memory_region &region, offs_t address, T val)
 	const offs_t lowmask = region.bytewidth() - 1;
 	for (int i = 0; i < sizeof(T); i++)
 	{
-		int addr = region.endianness() == ENDIANNESS_BIG ? address + sizeof(T) - 1 - i : address + i;
+		int addr = (region.endianness() == ENDIANNESS_BIG) ? (address + sizeof(T) - 1 - i) : (address + i);
 		if (addr < region.bytes())
 		{
 			if (region.endianness() == ENDIANNESS_BIG)
@@ -130,7 +132,7 @@ void share_write(memory_share &share, offs_t address, T val)
 int sol_lua_push(sol::types<map_handler_type>, lua_State *L, map_handler_type &&value)
 {
 	const char *typestr;
-	switch(value)
+	switch (value)
 	{
 	case AMH_NONE:
 		typestr = "none";
@@ -202,8 +204,7 @@ public:
 			offs_t end,
 			std::string &&name,
 			sol::protected_function &&callback)
-		: m_host(host)
-		, m_callback(std::move(callback))
+		: m_callback(host.m_lua_state, std::move(callback))
 		, m_space(space)
 		, m_handler()
 		, m_name(std::move(name))
@@ -270,7 +271,7 @@ private:
 						m_name,
 						[this] (offs_t offset, T &data, T mem_mask)
 						{
-							auto result = m_host.invoke(m_callback, offset, data, mem_mask).template get<std::optional<T> >();
+							auto result = invoke_direct(m_callback, offset, data, mem_mask).template get<std::optional<T> >();
 							if (result)
 								data = *result;
 						},
@@ -283,7 +284,7 @@ private:
 						m_name,
 						[this] (offs_t offset, T &data, T mem_mask)
 						{
-							auto result = m_host.invoke(m_callback, offset, data, mem_mask).template get<std::optional<T> >();
+							auto result = invoke_direct(m_callback, offset, data, mem_mask).template get<std::optional<T> >();
 							if (result)
 								data = *result;
 						},
@@ -302,7 +303,6 @@ private:
 		--m_installing;
 	};
 
-	lua_engine &m_host;
 	sol::protected_function m_callback;
 	address_space &m_space;
 	memory_passthrough_handler m_handler;
@@ -660,7 +660,12 @@ void lua_engine::initialize_memory(sol::table &emu)
 							case read_or_write::WRITE:     modestr = "w";  break;
 							case read_or_write::READWRITE: modestr = "rw"; break;
 							}
-							invoke(callback, modestr);
+							auto status = invoke(callback, modestr);
+							if (!status.valid())
+							{
+								sol::error err = status;
+								osd_printf_error("[LUA ERROR] in address space change notifier: %s\n", err.what());
+							}
 						});
 			});
 	addr_space_type.set_function("install_read_tap",
@@ -731,6 +736,21 @@ void lua_engine::initialize_memory(sol::table &emu)
 
 
 	auto region_type = sol().registry().new_usertype<memory_region>("region", sol::no_constructor);
+	region_type.set_function(
+			"read",
+			[] (memory_region &region, sol::this_state s, offs_t offset, offs_t length)
+			{
+				// TODO: should this do something special if the offset isn't a multiple of the byte width?
+				buffer_helper buf(s);
+				const offs_t limit = std::min<offs_t>(region.bytes(), offset + length);
+				const offs_t copyable = (limit > offset) ? (limit - offset) : 0;
+				auto space = buf.prepare(copyable);
+				if (copyable)
+					std::memcpy(space.get(), &region.as_u8(offset), copyable);
+				space.add(copyable);
+				buf.push();
+				return sol::make_reference(s, sol::stack_reference(s, -1));
+			});
 	region_type.set_function("read_i8", &region_read<s8>);
 	region_type.set_function("read_u8", &region_read<u8>);
 	region_type.set_function("read_i16", &region_read<s16>);

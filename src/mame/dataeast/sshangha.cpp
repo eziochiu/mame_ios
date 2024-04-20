@@ -95,7 +95,7 @@ HB-PCB-A5   M6100691A (distributed by Taito)
 
 
 // configurable logging
-#define LOG_VIDEOREGS (1U <<  1)
+#define LOG_VIDEOREGS (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_VIDEOREGS)
 
@@ -178,8 +178,6 @@ private:
 };
 
 
-// video
-
 /***************************************************************************
 
     Uses Data East custom chip 55 for backgrounds, with a special 8bpp mode
@@ -248,8 +246,6 @@ uint32_t sshangha_state::screen_update(screen_device &screen, bitmap_rgb32 &bitm
 	return 0;
 }
 
-
-// machine
 
 /******************************************************************************/
 

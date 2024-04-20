@@ -111,8 +111,8 @@ protected:
 	tilemap_t *m_tilemap_1 = nullptr;
 
 	u8 input_r(offs_t offset);
-	DECLARE_WRITE_LINE_MEMBER(main_irq_mask_w);
-	DECLARE_WRITE_LINE_MEMBER(sound_irq_mask_w);
+	void main_irq_mask_w(int state);
+	void sound_irq_mask_w(int state);
 	void vram_0_w(offs_t offset, u8 data);
 	void vram_1_w(offs_t offset, u8 data);
 
@@ -153,8 +153,6 @@ private:
 	void palette(palette_device &palette) const;
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -480,8 +478,6 @@ u32 clshroad_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 }
 
 
-// machine
-
 void clshroad_state::machine_start()
 {
 	save_item(NAME(m_main_irq_mask));
@@ -510,12 +506,12 @@ u8 clshroad_state::input_r(offs_t offset)
 
 // irq/reset controls like in wiping.cpp
 
-WRITE_LINE_MEMBER(clshroad_state::main_irq_mask_w)
+void clshroad_state::main_irq_mask_w(int state)
 {
 	m_main_irq_mask = state;
 }
 
-WRITE_LINE_MEMBER(clshroad_state::sound_irq_mask_w)
+void clshroad_state::sound_irq_mask_w(int state)
 {
 	m_sound_irq_mask = state;
 }

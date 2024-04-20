@@ -125,8 +125,8 @@ Notes:
 
 
 // configurable logging
-#define LOG_UNKWRITE     (1U <<  1)
-#define LOG_COINLOCK     (1U <<  2)
+#define LOG_UNKWRITE     (1U << 1)
+#define LOG_COINLOCK     (1U << 2)
 
 //#define VERBOSE (LOG_GENERAL | LOG_UNKWRITE | LOG_COINLOCK)
 
@@ -219,8 +219,6 @@ private:
 	void prg_map(address_map &map);
 };
 
-
-// video
 
 /***************************************************************************
   palette decode
@@ -440,8 +438,6 @@ uint32_t chaknpop_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 /***************************************************************************
 

@@ -46,17 +46,17 @@ protected:
 private:
 	struct PRC
 	{
-		uint8_t       colors_inverted = 0;
-		uint8_t       background_enabled = 0;
-		uint8_t       sprites_enabled = 0;
-		uint8_t       copy_enabled = 0;
-		uint8_t       map_size = 0;
-		uint8_t       map_size_x = 0;
-		uint8_t       frame_count = 0;
-		uint8_t       max_frame_count = 0;
-		uint32_t      bg_tiles = 0;
-		uint32_t      spr_tiles = 0;
-		uint8_t       count = 0;
+		uint8_t     colors_inverted = 0;
+		uint8_t     background_enabled = 0;
+		uint8_t     sprites_enabled = 0;
+		uint8_t     copy_enabled = 0;
+		uint8_t     map_size = 0;
+		uint8_t     map_size_x = 0;
+		uint8_t     frame_count = 0;
+		uint8_t     max_frame_count = 0;
+		uint32_t    bg_tiles = 0;
+		uint32_t    spr_tiles = 0;
+		uint8_t     count = 0;
 		emu_timer   *count_timer = nullptr;
 	};
 
@@ -1501,22 +1501,16 @@ DEVICE_IMAGE_LOAD_MEMBER( pokemini_state::cart_load )
 
 	/* Verify that the image is big enough */
 	if (size <= 0x2100)
-	{
-		osd_printf_error("%s: Invalid ROM image: ROM image is too small\n", image.basename());
-		return image_error::INVALIDLENGTH;
-	}
+		return std::make_pair(image_error::INVALIDLENGTH, "ROM image is too small");
 
 	/* Verify that the image is not too big */
 	if (size > 0x1fffff)
-	{
-		osd_printf_error("%s: Invalid ROM image: ROM image is too big\n", image.basename());
-		return image_error::INVALIDLENGTH;
-	}
+		return std::make_pair(image_error::INVALIDLENGTH, "ROM image is too big");
 
 	m_cart->rom_alloc(size, GENERIC_ROM8_WIDTH, ENDIANNESS_LITTLE);
 	m_cart->common_load_rom(m_cart->get_rom_base(), size, "rom");
 
-	return std::error_condition();
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 
@@ -1657,8 +1651,8 @@ TIMER_CALLBACK_MEMBER(pokemini_state::prc_counter_callback)
 void pokemini_state::machine_start()
 {
 	/* Clear internal structures */
-	memset( &m_prc, 0, sizeof(m_prc) );
-	memset( &m_timers, 0, sizeof(m_timers) );
+	m_prc = PRC();
+	m_timers = TIMERS();
 	memset( m_pm_reg, 0, sizeof(m_pm_reg) );
 
 	/* Set up timers */

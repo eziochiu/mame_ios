@@ -115,8 +115,8 @@ public:
 
 	void init_attackfc();
 
-	DECLARE_READ_LINE_MEMBER(cosmicmo_cab_r);
-	DECLARE_READ_LINE_MEMBER(sflush_80_r);
+	int cosmicmo_cab_r();
+	int sflush_80_r();
 
 protected:
 	virtual void video_start() override { m_color_map = m_screen_red = 0; }
@@ -207,7 +207,7 @@ private:
 	uint32_t screen_update_polaris(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_ballbomb(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
-	DECLARE_WRITE_LINE_MEMBER(polaris_60hz_w);
+	void polaris_60hz_w(int state);
 	TIMER_DEVICE_CALLBACK_MEMBER(schaser_effect_555_cb);
 	void indianbt_sh_port_3_w(uint8_t data);
 	void polaris_sh_port_1_w(uint8_t data);
@@ -437,9 +437,10 @@ private:
 class ozmawars_state : public _8080bw_state
 {
 public:
-	ozmawars_state(const machine_config &mconfig, device_type type, const char *tag)
-		: _8080bw_state(mconfig, type, tag)
-		{ }
+	ozmawars_state(const machine_config &mconfig, device_type type, const char *tag) :
+		_8080bw_state(mconfig, type, tag)
+	{
+	}
 
 	void ozmawars(machine_config &config);
 	void ozmawars_samples_audio(machine_config &config);
@@ -449,8 +450,8 @@ private:
 	void ozmawars_port04_w(uint8_t data);
 	void ozmawars_port05_w(uint8_t data);
 	void ozmawars_io_map(address_map &map);
-	u8 m_port03 = 0;
-	u8 m_port05 = 0;
+	uint8_t m_port03 = 0;
+	uint8_t m_port05 = 0;
 	bool m_sound_enable = 0;
 };
 
@@ -542,7 +543,7 @@ public:
 
 	DECLARE_INPUT_CHANGED_MEMBER(gun_trigger);
 
-	DECLARE_READ_LINE_MEMBER(gun_on_r);
+	int gun_on_r();
 
 protected:
 	virtual void machine_start() override;
@@ -578,7 +579,7 @@ public:
 	void cane_audio(machine_config &config);
 
 protected:
-	void cane_unknown_port0_w(u8 data);
+	void cane_unknown_port0_w(uint8_t data);
 
 private:
 	void cane_io_map(address_map &map);
@@ -606,8 +607,8 @@ public:
 protected:
 	virtual void machine_start() override;
 
-	u8 orbite_scattered_colorram_r(address_space &space, offs_t offset, u8 mem_mask = 0xff);
-	void orbite_scattered_colorram_w(address_space &space, offs_t offset, u8 data, u8 mem_mask = 0xff);
+	uint8_t orbite_scattered_colorram_r(address_space &space, offs_t offset, uint8_t mem_mask = 0xff);
+	void orbite_scattered_colorram_w(address_space &space, offs_t offset, uint8_t data, uint8_t mem_mask = 0xff);
 
 private:
 	void orbite_io_map(address_map &map);

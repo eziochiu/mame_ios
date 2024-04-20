@@ -65,14 +65,15 @@ public:
 	colecovision_cartridge_slot_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 	// computer interface
-	uint8_t bd_r(offs_t offset, uint8_t data, int _8000, int _a000, int _c000, int _e000);
+	uint8_t read(offs_t offset, int _8000, int _a000, int _c000, int _e000);
+	void write(offs_t offset, uint8_t data, int _8000, int _a000, int _c000, int _e000);
 
 protected:
 	// device_t implementation
 	virtual void device_start() override;
 
 	// device_image_interface implementation
-	virtual std::error_condition call_load() override;
+	virtual std::pair<std::error_condition, std::string> call_load() override;
 
 	virtual bool is_reset_on_load() const noexcept override { return true; }
 	virtual const char *image_interface() const noexcept override { return "coleco_cart"; }
@@ -92,7 +93,8 @@ class device_colecovision_cartridge_interface : public device_interface
 	friend class colecovision_cartridge_slot_device;
 
 public:
-	virtual uint8_t bd_r(offs_t offset, uint8_t data, int _8000, int _a000, int _c000, int _e000) { return 0xff; }
+	virtual uint8_t read(offs_t offset, int _8000, int _a000, int _c000, int _e000) { return 0xff; }
+	virtual void write(offs_t offset, uint8_t data, int _8000, int _a000, int _c000, int _e000) { }
 
 	void rom_alloc(size_t size);
 

@@ -54,7 +54,7 @@ NOTE: PIC16C5x protection chip at 5A (UC02 as silkscreened on PCB)
 
 
 // configurable logging
-#define LOG_PICSIM     (1U <<  1)
+#define LOG_PICSIM     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_PICSIM)
 
@@ -117,8 +117,6 @@ private:
 	void mosaic_map(address_map &map);
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -188,8 +186,6 @@ uint32_t mosaic_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 	return 0;
 }
 
-
-// machine
 
 void mosaic_state::protection_w(uint8_t data) // TODO: hook up PIC dump and remove this simulation (PIC dump contains the exact values in this jumptable)
 {

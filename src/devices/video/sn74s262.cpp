@@ -50,7 +50,7 @@ GFXDECODE_END
 
 ROM_START( sn74s262 )
 	ROM_REGION( 0xa00, "chargen", 0 )
-	ROM_LOAD( "sn74s262", 0x000, 0xa00, NO_DUMP )
+	ROM_LOAD( "sn74s262", 0x000, 0x500, BAD_DUMP CRC(6896d319) SHA1(1234558418a5c7a9823d54a93d0c7f63bd8a490a) ) // created by hand
 ROM_END
 
 
@@ -110,7 +110,7 @@ sn74s262_device::sn74s262_device(const machine_config &mconfig, const char *tag,
 }
 
 sn74s263_device::sn74s263_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock) :
-    sn74s262_device(mconfig, SN74S263, tag, owner, clock)
+	sn74s262_device(mconfig, SN74S263, tag, owner, clock)
 {
 }
 
@@ -121,10 +121,10 @@ sn74s263_device::sn74s263_device(const machine_config &mconfig, const char *tag,
 
 u8 sn74s262_device::read(u8 character, u8 row)
 {
-    if ((row & 0xf) > 8)
-    {
-        return 0;
-    }
+	if ((row & 0xf) > 8)
+	{
+		return 0;
+	}
 
-    return m_char_rom[((character & 0x7f) * 10) + (row & 0xf)];
+	return m_char_rom[((character & 0x7f) * 10) + (row & 0xf)];
 }

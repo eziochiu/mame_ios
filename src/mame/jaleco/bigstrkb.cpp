@@ -26,7 +26,7 @@
 
 
 // configurable logging
-#define LOG_VIDREG     (1U <<  1)
+#define LOG_VIDREG     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_VIDREG)
 
@@ -78,8 +78,6 @@ private:
 	void prg_map(address_map &map);
 };
 
-
-// video
 
 // Sprites
 
@@ -193,8 +191,6 @@ uint32_t bigstrkb_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 /*
 

@@ -73,6 +73,8 @@ exports.author = { name = "Carl" }
 
 local cheat = exports
 
+local reset_subscription, stop_subscription, frame_subscription
+
 function cheat.set_folder(path)
 	cheat.path = path
 end
@@ -451,21 +453,22 @@ function cheat.startplugin()
 	end
 
 	local function parse_cheat(cheat)
-		cheat.cheat_env = { draw_text = draw_text,
-					draw_line = draw_line,
-					draw_box = draw_box,
-					tobcd = tobcd,
-					frombcd = frombcd,
-					pairs = pairs,
-					ipairs = ipairs,
-					outputs = manager.machine.output,
-					time = time,
-					input_trans = input_trans,
-					input_run = function(list) input_run(cheat, list) end,
-					os = { time = os.time, date = os.date, difftime = os.difftime },
-					table =
-					{ insert = table.insert,
-						  remove = table.remove } }
+		cheat.cheat_env = {
+			draw_text = draw_text,
+			draw_line = draw_line,
+			draw_box = draw_box,
+			tobcd = tobcd,
+			frombcd = frombcd,
+			pairs = pairs,
+			ipairs = ipairs,
+			outputs = manager.machine.output,
+			time = time,
+			input_trans = input_trans,
+			input_run = function(list) input_run(cheat, list) end,
+			os = { time = os.time, date = os.date, difftime = os.difftime },
+			table = { insert = table.insert, remove = table.remove },
+			string = { format = string.format, char = string.char }
+		}
 		cheat.enabled = false
 		cheat.set_enabled = set_enabled;
 		cheat.get_enabled = function(cheat) return cheat.enabled end
@@ -809,7 +812,7 @@ function cheat.startplugin()
 				return menu_populate()
 			  end, _("Cheat"))
 
-	emu.register_start(function()
+	reset_subscription = emu.add_machine_reset_notifier(function ()
 		if not stop then
 			return
 		end
@@ -832,13 +835,13 @@ function cheat.startplugin()
 		end
 	end)
 
-	emu.register_stop(function()
+	stop_subscription = emu.add_machine_stop_notifier(function ()
 		stop = true
 		consolelog = nil
 		save_hotkeys()
 	end)
 
-	emu.register_frame(function()
+	frame_subscription = emu.add_machine_frame_notifier(function ()
 		if stop then
 			return
 		end

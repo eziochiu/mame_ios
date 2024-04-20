@@ -60,7 +60,7 @@
 
 
 // configurable logging
-#define LOG_BADSPRITES     (1U <<  1)
+#define LOG_BADSPRITES     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_BADSPRITES)
 
@@ -144,8 +144,6 @@ private:
 	emu_timer *m_interrupt5_timer = nullptr;
 };
 
-
-// video
 
 /************************************************************/
 
@@ -376,8 +374,6 @@ u32 gunbustr_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, c
 	return 0;
 }
 
-
-// machine
 
 /*********************************************************************/
 

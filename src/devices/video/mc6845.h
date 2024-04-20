@@ -62,7 +62,9 @@ public:
 	// construction/destruction
 	mc6845_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
+	// HACK: show the full screen_device htotal/vtotal if true (regulate with UI slider controls)
 	void set_show_border_area(bool show) { m_show_border_area = show; }
+	// HACK: a static alternative of above, potentially unsafe.
 	void set_visarea_adjust(int min_x, int max_x, int min_y, int max_y)
 	{
 		m_visarea_adjust_min_x = min_x;
@@ -96,16 +98,16 @@ public:
 	void register_w(uint8_t data);
 
 	// read display enable line state
-	DECLARE_READ_LINE_MEMBER( de_r );
+	int de_r();
 
 	// read cursor line state
-	DECLARE_READ_LINE_MEMBER( cursor_r );
+	int cursor_r();
 
 	// read horizontal sync line state
-	DECLARE_READ_LINE_MEMBER( hsync_r );
+	int hsync_r();
 
 	// read vertical sync line state
-	DECLARE_READ_LINE_MEMBER( vsync_r );
+	int vsync_r();
 
 	/* return the current value on the MA0-MA13 pins */
 	uint16_t get_ma();

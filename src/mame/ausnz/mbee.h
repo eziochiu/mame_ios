@@ -94,9 +94,6 @@ public:
 	void init_mbee256()  { m_features = 0x2d; }
 
 private:
-	void port04_w(u8 data);
-	void port06_w(u8 data);
-	u8 port07_r();
 	u8 port08_r();
 	void port08_w(u8 data);
 	void port0a_w(u8 data);
@@ -115,8 +112,8 @@ private:
 	void video_high_w(offs_t offset, u8 data);
 	void pio_port_b_w(u8 data);
 	u8 pio_port_b_r();
-	DECLARE_WRITE_LINE_MEMBER(pio_ardy);
-	DECLARE_WRITE_LINE_MEMBER(crtc_vs);
+	void pio_ardy(int state);
+	void crtc_vs(int state);
 	u8 fdc_status_r();
 	u8 pak_r(offs_t);
 	u8 net_r(offs_t);
@@ -125,14 +122,14 @@ private:
 	void premium_palette(palette_device &palette) const;
 	uint32_t screen_update_mbee(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	TIMER_DEVICE_CALLBACK_MEMBER(newkb_timer);
-	std::error_condition load_cart(device_image_interface &image, generic_slot_device *slot, u8);
+	std::pair<std::error_condition, std::string> load_cart(device_image_interface &image, generic_slot_device *slot, u8);
 	void unload_cart(u8);
 	DECLARE_QUICKLOAD_LOAD_MEMBER(quickload_cb);
 	template <u8 T> DECLARE_DEVICE_IMAGE_LOAD_MEMBER(pak_load) { return load_cart(image, m_pak[T], T); }
 	template <u8 T> DECLARE_DEVICE_IMAGE_UNLOAD_MEMBER(pak_unload) { unload_cart(T); }
-	WRITE_LINE_MEMBER(rtc_irq_w);
-	WRITE_LINE_MEMBER(fdc_intrq_w);
-	WRITE_LINE_MEMBER(fdc_drq_w);
+	void rtc_irq_w(int state);
+	void fdc_intrq_w(int state);
+	void fdc_drq_w(int state);
 	MC6845_UPDATE_ROW(crtc_update_row);
 	MC6845_ON_UPDATE_ADDR_CHANGED(crtc_update_addr);
 	void machine_start() override;

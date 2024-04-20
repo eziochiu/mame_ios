@@ -1,5 +1,5 @@
-SDL-Specific Commandline Options
-================================
+SDL-Specific Command-line Options
+=================================
 
 This section contains configuration options that are specific to any build
 supported by SDL (including Windows when built with SDL instead of native).
@@ -61,8 +61,16 @@ SDL Keyboard Mapping
     Keymap file name.  Default is ``keymap.dat``.
 
 
-SDL Joystick Mapping
+SDL Input Options
 --------------------
+
+.. _mame-scommandline-enabletouch:
+
+**-enable_touch**
+
+    Enable support for touch input.  If this option is switched off, mouse input
+    simulated from touch devices will be used instead.  Default is OFF
+    (**-noenable_touch**)
 
 .. _mame-scommandline-sixaxis:
 

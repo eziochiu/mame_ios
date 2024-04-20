@@ -37,7 +37,7 @@
 
 
 // configurable logging
-#define LOG_UNKMOBWR     (1U <<  1)
+#define LOG_UNKMOBWR     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_UNKMOBWR)
 
@@ -101,8 +101,6 @@ private:
 	void main_map(address_map &map);
 };
 
-
-// video
 
 /*************************************
  *
@@ -391,8 +389,6 @@ uint32_t skullxbo_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 /*************************************
  *

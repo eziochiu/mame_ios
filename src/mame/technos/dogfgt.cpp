@@ -22,8 +22,8 @@ driver by Nicola Salmoria
 
 
 // configurable logging
-#define LOG_BITMAPRAM     (1U <<  1)
-#define LOG_1800          (1U <<  2)
+#define LOG_BITMAPRAM     (1U << 1)
+#define LOG_1800          (1U << 2)
 
 //#define VERBOSE (LOG_GENERAL | LOG_BITMAPRAM | LOG_1800)
 
@@ -108,8 +108,6 @@ private:
 	void sub_map(address_map &map);
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -321,8 +319,6 @@ uint32_t dogfgt_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 	return 0;
 }
 
-
-// machine
 
 void dogfgt_state::subirqtrigger_w(uint8_t data)
 {

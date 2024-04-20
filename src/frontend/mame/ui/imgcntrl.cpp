@@ -9,7 +9,6 @@
 ***************************************************************************/
 
 #include "emu.h"
-
 #include "ui/imgcntrl.h"
 
 #include "ui/filecreate.h"
@@ -41,17 +40,45 @@ menu_control_device_image::menu_control_device_image(mame_ui_manager &mui, rende
 	, m_image(image)
 	, m_create_ok(false)
 	, m_create_confirmed(false)
+	, m_swi(nullptr)
+	, m_swp(nullptr)
+	, m_sld(nullptr)
 {
 	m_submenu_result.i = -1;
 
 	if (m_image.software_list_name())
 		m_sld = software_list_device::find_by_name(mui.machine().config(), m_image.software_list_name());
-	else
-		m_sld = nullptr;
 	m_swi = m_image.software_entry();
 	m_swp = m_image.part_entry();
 
-	if (m_swi != nullptr)
+	// if there's no image mounted, check for a software item with compatible parts mounted elsewhere
+	if (!m_image.exists() && m_image.image_interface())
+	{
+		assert(!m_swi);
+
+		for (device_image_interface &other : image_interface_enumerator(mui.machine().root_device()))
+		{
+			if (other.loaded_through_softlist() && (!m_sld || (m_sld->list_name() == other.software_list_name())))
+			{
+				software_info const &swi = *other.software_entry();
+				for (software_part const &swp : swi.parts())
+				{
+					if (swp.interface() == m_image.image_interface())
+					{
+						if (!m_sld)
+							m_sld = software_list_device::find_by_name(mui.machine().config(), other.software_list_name());
+						m_swi = &swi;
+						break;
+					}
+				}
+			}
+
+			if (m_swi)
+				break;
+		}
+	}
+
+	if (m_swi)
 	{
 		m_state = START_OTHER_PART;
 		m_current_directory = m_image.working_directory();
@@ -159,7 +186,9 @@ void menu_control_device_image::load_software_part()
 	// if everything looks good, load software
 	if (summary == media_auditor::CORRECT || summary == media_auditor::BEST_AVAILABLE || summary == media_auditor::NONE_NEEDED)
 	{
-		m_image.load_software(temp_name);
+		auto [err, msg] = m_image.load_software(temp_name);
+		if (err)
+			machine().popmessage(_("Error loading software item: %1$s"), !msg.empty() ? msg : err.message());
 		stack_pop();
 	}
 	else
@@ -177,7 +206,9 @@ void menu_control_device_image::load_software_part()
 
 void menu_control_device_image::hook_load(const std::string &name)
 {
-	m_image.load(name);
+	auto [err, msg] = m_image.load(name);
+	if (err)
+		machine().popmessage(_("Error loading media image: %1$s"), !msg.empty() ? msg : err.message());
 	stack_pop();
 }
 
@@ -211,9 +242,43 @@ void menu_control_device_image::menu_activated()
 	switch(m_state)
 	{
 	case START_FILE:
-		m_submenu_result.filesel = menu_file_selector::result::INVALID;
-		menu::stack_push<menu_file_selector>(ui(), container(), &m_image, m_current_directory, m_current_file, true, m_image.image_interface()!=nullptr, m_image.is_creatable(), m_submenu_result.filesel);
-		m_state = SELECT_FILE;
+		menu::stack_push<menu_file_selector>(
+				ui(), container(),
+				&m_image,
+				m_current_directory,
+				m_current_file,
+				true,
+				m_image.image_interface() != nullptr,
+				m_image.is_creatable(),
+				[this] (menu_file_selector::result result, std::string &&directory, std::string &&file)
+				{
+					m_current_directory = std::move(directory);
+					m_current_file = std::move(file);
+					switch (result)
+					{
+					case menu_file_selector::result::EMPTY:
+						m_image.unload();
+						stack_pop();
+						break;
+
+					case menu_file_selector::result::FILE:
+						hook_load(m_current_file);
+						break;
+
+					case menu_file_selector::result::CREATE:
+						menu::stack_push<menu_file_create>(ui(), container(), &m_image, m_current_directory, m_current_file, m_create_ok);
+						m_state = CHECK_CREATE;
+						break;
+
+					case menu_file_selector::result::SOFTLIST:
+						m_state = START_SOFTLIST;
+						break;
+
+					default: // return to system
+						stack_pop();
+						break;
+					}
+				});
 		break;
 
 	case START_SOFTLIST:
@@ -224,7 +289,7 @@ void menu_control_device_image::menu_activated()
 
 	case START_OTHER_PART:
 		m_submenu_result.swparts = menu_software_parts::result::INVALID;
-		menu::stack_push<menu_software_parts>(ui(), container(), m_swi, m_swp->interface().c_str(), &m_swp, true, m_submenu_result.swparts);
+		menu::stack_push<menu_software_parts>(ui(), container(), m_swi, m_image.image_interface(), &m_swp, true, m_submenu_result.swparts);
 		m_state = SELECT_OTHER_PART;
 		break;
 
@@ -304,34 +369,6 @@ void menu_control_device_image::menu_activated()
 		}
 		break;
 
-	case SELECT_FILE:
-		switch (m_submenu_result.filesel)
-		{
-		case menu_file_selector::result::EMPTY:
-			m_image.unload();
-			stack_pop();
-			break;
-
-		case menu_file_selector::result::FILE:
-			hook_load(m_current_file);
-			break;
-
-		case menu_file_selector::result::CREATE:
-			menu::stack_push<menu_file_create>(ui(), container(), &m_image, m_current_directory, m_current_file, m_create_ok);
-			m_state = CHECK_CREATE;
-			break;
-
-		case menu_file_selector::result::SOFTLIST:
-			m_state = START_SOFTLIST;
-			menu_activated();
-			break;
-
-		default: // return to system
-			stack_pop();
-			break;
-		}
-		break;
-
 	case CREATE_FILE:
 		{
 			bool can_create, need_confirm;
@@ -370,9 +407,9 @@ void menu_control_device_image::menu_activated()
 	case DO_CREATE:
 		{
 			auto path = util::zippath_combine(m_current_directory, m_current_file);
-			std::error_condition err = m_image.create(path, nullptr, nullptr);
+			auto [err, msg] = m_image.create(path, nullptr, nullptr);
 			if (err)
-				machine().popmessage("Error: %s", err.message());
+				machine().popmessage(_("Error creating media image: %1$s"), !msg.empty() ? msg : err.message());
 			stack_pop();
 		}
 		break;

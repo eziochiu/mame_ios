@@ -90,8 +90,8 @@ private:
 	emu_timer *m_hit_timer = nullptr;
 	tilemap_t* m_bg_tilemap = nullptr;
 
-	DECLARE_WRITE_LINE_MEMBER(coin_lockout_w);
-	DECLARE_WRITE_LINE_MEMBER(tape_control_w);
+	void coin_lockout_w(int state);
+	void tape_control_w(int state);
 
 	uint8_t cmos_r(offs_t offset);
 	uint8_t input_port_4_r();
@@ -108,8 +108,6 @@ private:
 	void program_map(address_map &map);
 };
 
-
-// video
 
 TILE_GET_INFO_MEMBER(triplhnt_state::get_tile_info)
 {
@@ -214,8 +212,6 @@ uint32_t triplhnt_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 }
 
 
-// machine
-
 void triplhnt_state::init_triplhnt()
 {
 	subdevice<nvram_device>("nvram")->set_base(m_cmos, sizeof(m_cmos));
@@ -230,14 +226,14 @@ TIMER_CALLBACK_MEMBER(triplhnt_state::set_collision)
 }
 
 
-WRITE_LINE_MEMBER(triplhnt_state::coin_lockout_w)
+void triplhnt_state::coin_lockout_w(int state)
 {
 	machine().bookkeeping().coin_lockout_w(0, !state);
 	machine().bookkeeping().coin_lockout_w(1, !state);
 }
 
 
-WRITE_LINE_MEMBER(triplhnt_state::tape_control_w)
+void triplhnt_state::tape_control_w(int state)
 {
 	bool const is_witch_hunt = m_0c09->read() == 0x40;
 	bool const bit = !state;

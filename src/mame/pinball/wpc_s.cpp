@@ -49,6 +49,8 @@ ToDo:
 #include "cpu/m6809/m6809.h"
 #include "machine/nvram.h"
 
+#include "speaker.h"
+
 namespace {
 
 class wpc_s_state : public driver_device
@@ -100,7 +102,7 @@ private:
 	void dcs_reset_w(uint8_t data);
 	uint8_t rtc_r(offs_t offset);
 
-	DECLARE_WRITE_LINE_MEMBER(scanline_irq);
+	void scanline_irq(int state);
 	TIMER_DEVICE_CALLBACK_MEMBER(zc_timer);
 
 	void wpc_s_map(address_map &map);
@@ -254,7 +256,7 @@ void wpc_s_state::watchdog_w(uint8_t data)
 	m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER(wpc_s_state::scanline_irq)
+void wpc_s_state::scanline_irq(int state)
 {
 	m_firq_src = 0x00;
 	m_maincpu->set_input_line(1, state);
@@ -2057,7 +2059,12 @@ void wpc_s_state::wpc_s(machine_config &config)
 	WPC_DMD(config, "dmd", 0).scanline_callback().set(FUNC(wpc_s_state::scanline_irq));
 
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
+
+	SPEAKER(config, "mono").front_center();
+
 	DCS_AUDIO_8K(config, m_dcs, 0);
+	m_dcs->set_maincpu_tag(m_maincpu);
+	m_dcs->add_route(0, "mono", 1.0);
 }
 
 /*-----------------

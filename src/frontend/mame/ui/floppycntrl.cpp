@@ -12,6 +12,9 @@
 #include "ui/filecreate.h"
 #include "ui/floppycntrl.h"
 
+#include "formats/flopimg.h"
+#include "formats/fsmgr.h"
+
 #include "zippath.h"
 
 #include <tuple>
@@ -41,25 +44,27 @@ menu_control_floppy_image::~menu_control_floppy_image()
 void menu_control_floppy_image::do_load_create()
 {
 	if(input_filename.empty()) {
-		std::error_condition err = fd.create(output_filename, nullptr, nullptr);
+		auto [err, message] = fd.create(output_filename, nullptr, nullptr);
 		if (err) {
-			machine().popmessage("Error: %s", err.message());
+			machine().popmessage(_("Error creating floppy image: %1$s"), !message.empty() ? message : err.message());
 			return;
 		}
 		if (create_fs) {
 			// HACK: ensure the floppy_image structure is created since device_image_interface may not otherwise do so during "init phase"
-			err = fd.finish_load();
+			err = fd.finish_load().first;
 			if (!err) {
 				fs::meta_data meta;
 				fd.init_fs(create_fs, meta);
 			}
 		}
 	} else {
-		std::error_condition err = fd.load(input_filename);
-		if (!err && !output_filename.empty())
+		auto [err, message] = fd.load(input_filename);
+		if (!err && !output_filename.empty()) {
+			message.clear();
 			err = fd.reopen_for_write(output_filename);
+		}
 		if (err) {
-			machine().popmessage("Error: %s", err.message());
+			machine().popmessage(_("Error opening floppy image: %1$s"), !message.empty() ? message : err.message());
 			return;
 		}
 	}
@@ -81,7 +86,8 @@ void menu_control_floppy_image::hook_load(const std::string &filename)
 	else
 	{
 		bool can_in_place = input_format->supports_save();
-		if(can_in_place) {
+		if (can_in_place)
+		{
 			std::string tmp_path;
 			util::core_file::ptr tmp_file;
 			// attempt to open the file for writing but *without* create
@@ -91,9 +97,41 @@ void menu_control_floppy_image::hook_load(const std::string &filename)
 			else
 				can_in_place = false;
 		}
-		m_submenu_result.rw = menu_select_rw::result::INVALID;
-		menu::stack_push<menu_select_rw>(ui(), container(), can_in_place, m_submenu_result.rw);
-		m_state = SELECT_RW;
+		menu::stack_push<menu_select_rw>(
+				ui(),
+				container(),
+				can_in_place,
+				[this] (menu_select_rw::result result)
+				{
+					switch (result)
+					{
+					case menu_select_rw::result::READONLY:
+						do_load_create();
+						fd.setup_write(nullptr);
+						stack_pop();
+						break;
+
+					case menu_select_rw::result::READWRITE:
+						output_format = input_format;
+						do_load_create();
+						stack_pop();
+						break;
+
+					case menu_select_rw::result::WRITE_DIFF:
+						machine().popmessage("Sorry, diffs are not supported yet\n");
+						stack_pop();
+						break;
+
+					case menu_select_rw::result::WRITE_OTHER:
+						menu::stack_push<menu_file_create>(ui(), container(), &m_image, m_current_directory, m_current_file, m_create_ok);
+						m_state = CHECK_CREATE;
+						break;
+
+					case menu_select_rw::result::INVALID:
+						m_state = START_FILE;
+						break;
+					}
+				});
 	}
 }
 
@@ -174,37 +212,6 @@ void menu_control_floppy_image::menu_activated()
 		} else {
 			do_load_create();
 			stack_pop();
-		}
-		break;
-
-	case SELECT_RW:
-		switch(m_submenu_result.rw) {
-		case menu_select_rw::result::READONLY:
-			do_load_create();
-			fd.setup_write(nullptr);
-			stack_pop();
-			break;
-
-		case menu_select_rw::result::READWRITE:
-			output_format = input_format;
-			do_load_create();
-			stack_pop();
-			break;
-
-		case menu_select_rw::result::WRITE_DIFF:
-			machine().popmessage("Sorry, diffs are not supported yet\n");
-			stack_pop();
-			break;
-
-		case menu_select_rw::result::WRITE_OTHER:
-			menu::stack_push<menu_file_create>(ui(), container(), &m_image, m_current_directory, m_current_file, m_create_ok);
-			m_state = CHECK_CREATE;
-			break;
-
-		case menu_select_rw::result::INVALID:
-			m_state = START_FILE;
-			menu_activated();
-			break;
 		}
 		break;
 

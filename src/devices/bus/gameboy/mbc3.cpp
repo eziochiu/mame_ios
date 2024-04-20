@@ -82,6 +82,7 @@
 #include "corestr.h"
 
 #include <string>
+#include <tuple>
 
 //#define VERBOSE 1
 //#define LOG_OUTPUT_FUNC osd_printf_info
@@ -331,24 +332,24 @@ std::error_condition mbc3_device_base::install_memory(
 	// install bank switching handlers
 	cart_space()->install_write_handler(
 			0x0000, 0x1fff,
-			write8smo_delegate(*this, FUNC(mbc3_device_base::enable_ram_rtc)));
+			emu::rw_delegate(*this, FUNC(mbc3_device_base::enable_ram_rtc)));
 	cart_space()->install_write_handler(
 			0x2000, 0x3fff,
-			write8smo_delegate(*this, FUNC(mbc3_device_base::bank_switch_fine)));
+			emu::rw_delegate(*this, FUNC(mbc3_device_base::bank_switch_fine)));
 	cart_space()->install_write_handler(
 			0x4000, 0x5fff,
-			write8smo_delegate(*this, FUNC(mbc3_device_base::select_ram_rtc)));
+			emu::rw_delegate(*this, FUNC(mbc3_device_base::select_ram_rtc)));
 	cart_space()->install_write_handler(
 			0x6000, 0x7fff,
-			write8smo_delegate(*this, FUNC(mbc3_device_base::latch_rtc)));
+			emu::rw_delegate(*this, FUNC(mbc3_device_base::latch_rtc)));
 
 	// install real-time clock handlers
 	m_view_ram[1].install_read_handler(
 			0xa000, 0xbfff,
-			read8mo_delegate(*this, FUNC(mbc3_device_base::read_rtc)));
+			emu::rw_delegate(*this, FUNC(mbc3_device_base::read_rtc)));
 	m_view_ram[1].install_write_handler(
 			0xa000, 0xbfff,
-			write8smo_delegate(*this, FUNC(mbc3_device_base::write_rtc)));
+			emu::rw_delegate(*this, FUNC(mbc3_device_base::write_rtc)));
 
 	// if real-time clock crystal is present, start it ticking
 	if (m_has_rtc_xtal)
@@ -512,13 +513,17 @@ bool mbc3_device_base::nvram_read(util::read_stream &file)
 	if (m_has_battery)
 	{
 		// read previous machine time (seconds since epoch) and RTC registers
-		u64 seconds;
+		std::error_condition err;
 		std::size_t actual;
-		if (file.read(&seconds, sizeof(seconds), actual) || (sizeof(seconds) != actual))
+
+		u64 seconds;
+		std::tie(err, actual) = read(file, &seconds, sizeof(seconds));
+		if (err || (sizeof(seconds) != actual))
 			return false;
 		m_machine_seconds = big_endianize_int64(seconds);
 
-		if (file.read(&m_rtc_regs[0][0], sizeof(m_rtc_regs[0]), actual) || (sizeof(m_rtc_regs[0]) != actual))
+		std::tie(err, actual) = read(file, &m_rtc_regs[0][0], sizeof(m_rtc_regs[0]));
+		if (err || (sizeof(m_rtc_regs[0]) != actual))
 			return false;
 	}
 	else
@@ -535,10 +540,13 @@ bool mbc3_device_base::nvram_write(util::write_stream &file)
 	system_time current;
 	machine().current_datetime(current);
 	u64 const seconds(big_endianize_int64(s64(std::make_signed_t<decltype(current.time)>(current.time))));
+	std::error_condition err;
 	std::size_t written;
-	if (file.write(&seconds, sizeof(seconds), written) || (sizeof(seconds) != written))
+	std::tie(err, written) = write(file, &seconds, sizeof(seconds));
+	if (err)
 		return false;
-	if (file.write(&m_rtc_regs[0][0], sizeof(m_rtc_regs[0]), written) || (sizeof(m_rtc_regs[0]) != written))
+	std::tie(err, written) = write(file, &m_rtc_regs[0][0], sizeof(m_rtc_regs[0]));
+	if (err)
 		return false;
 	return true;
 }

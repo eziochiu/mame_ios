@@ -106,8 +106,6 @@ private:
 };
 
 
-// video
-
 /*************************************
  *
  *  Tilemap callbacks
@@ -347,8 +345,6 @@ uint32_t toobin_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap
 }
 
 
-// machine
-
 /*************************************
  *
  *  Initialization & interrupts
@@ -525,7 +521,7 @@ void toobin_state::toobin(machine_config &config)
 	// basic machine hardware
 	m68010_device &maincpu(M68010(config, m_maincpu, MASTER_CLOCK / 4));
 	maincpu.set_addrmap(AS_PROGRAM, &toobin_state::main_map);
-	maincpu.disable_interrupt_mixer();
+	maincpu.set_interrupt_mixer(false);
 
 	EEPROM_2804(config, "eeprom").lock_after_write(true);
 

@@ -15,8 +15,8 @@ Memory mapped:
 0000-dfff   ROM
 e000-e7ff   RAM, battery backed
 e800-ebff   Sprite RAM
-f000-fbff   Background Video RAM
-f400-ffff   Background Color RAM
+f000-f3ff   Background Video RAM
+f400-f7ff   Background Color RAM
 f800-fbff   Foreground Video RAM
 fc00-ffff   Foreground Color RAM
 
@@ -172,10 +172,9 @@ protected:
 	bool m_irq_enable = 0;
 
 	// common
-	DECLARE_WRITE_LINE_MEMBER(vblank_irq);
-	DECLARE_WRITE_LINE_MEMBER(irq_reset_w);
-	template <uint8_t Which> DECLARE_WRITE_LINE_MEMBER(coin_w);
-	DECLARE_WRITE_LINE_MEMBER(flip_screen_w);
+	void vblank_irq(int state);
+	void irq_reset_w(int state);
+	template <uint8_t Which> void coin_w(int state);
 	void bg_videoram_w(offs_t offset, uint8_t data);
 	void bg_colorram_w(offs_t offset, uint8_t data);
 	void scroll_bg_w(uint8_t data);
@@ -228,8 +227,8 @@ private:
 
 	void sound_command_w(uint8_t data);
 	uint8_t sound_command_r();
-	DECLARE_WRITE_LINE_MEMBER(palette_bank0_w);
-	DECLARE_WRITE_LINE_MEMBER(palette_bank1_w);
+	void palette_bank0_w(int state);
+	void palette_bank1_w(int state);
 	void scroll_fg_w(uint8_t data);
 	void fg_videoram_w(offs_t offset, uint8_t data);
 	void fg_colorram_w(offs_t offset, uint8_t data);
@@ -245,8 +244,6 @@ private:
 	void saurobl_sound_map(address_map &map);
 };
 
-
-// video
 
 // General
 
@@ -302,7 +299,7 @@ TILE_GET_INFO_MEMBER(sauro_state::get_tile_info_fg)
 static const int scroll2_map[8] = {2, 1, 4, 3, 6, 5, 0, 7};
 static const int scroll2_map_flip[8] = {0, 7, 2, 1, 4, 3, 6, 5};
 
-WRITE_LINE_MEMBER(sauro_state::palette_bank0_w)
+void sauro_state::palette_bank0_w(int state)
 {
 	if (state)
 		m_palette_bank |= 0x10;
@@ -311,7 +308,7 @@ WRITE_LINE_MEMBER(sauro_state::palette_bank0_w)
 	machine().tilemap().mark_all_dirty();
 }
 
-WRITE_LINE_MEMBER(sauro_state::palette_bank1_w)
+void sauro_state::palette_bank1_w(int state)
 {
 	if (state)
 		m_palette_bank |= 0x20;
@@ -466,8 +463,6 @@ uint32_t trckydoc_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 }
 
 
-// machine
-
 void base_state::machine_start()
 {
 	save_item(NAME(m_irq_enable));
@@ -486,13 +481,13 @@ uint8_t sauro_state::sound_command_r()
 	return ret;
 }
 
-WRITE_LINE_MEMBER(base_state::vblank_irq)
+void base_state::vblank_irq(int state)
 {
 	if (state && m_irq_enable)
 		m_maincpu->set_input_line(0, ASSERT_LINE);
 }
 
-WRITE_LINE_MEMBER(base_state::irq_reset_w)
+void base_state::irq_reset_w(int state)
 {
 	m_irq_enable = !state;
 	if (m_irq_enable)
@@ -500,14 +495,9 @@ WRITE_LINE_MEMBER(base_state::irq_reset_w)
 }
 
 template <uint8_t Which>
-WRITE_LINE_MEMBER(base_state::coin_w)
+void base_state::coin_w(int state)
 {
 	machine().bookkeeping().coin_counter_w(Which, state);
-}
-
-WRITE_LINE_MEMBER(base_state::flip_screen_w)
-{
-	flip_screen_set(state);
 }
 
 void sauro_state::main_prg_map(address_map &map)
@@ -807,7 +797,7 @@ void trckydoc_state::trckydoc(machine_config &config)
 
 	m_maincpu->set_addrmap(AS_PROGRAM, &trckydoc_state::prg_map);
 
-	m_mainlatch->q_out_cb<1>().set(FUNC(trckydoc_state::flip_screen_w));
+	m_mainlatch->q_out_cb<1>().set(FUNC(trckydoc_state::flip_screen_set));
 	m_mainlatch->q_out_cb<2>().set(FUNC(trckydoc_state::coin_w<0>));
 	m_mainlatch->q_out_cb<3>().set(FUNC(trckydoc_state::coin_w<1>));
 
@@ -824,7 +814,7 @@ void sauro_state::saurobl(machine_config &config)
 	m_maincpu->set_addrmap(AS_IO, &sauro_state::main_io_map);
 
 	// Z3
-	m_mainlatch->q_out_cb<0>().set(FUNC(sauro_state::flip_screen_w));
+	m_mainlatch->q_out_cb<0>().set(FUNC(sauro_state::flip_screen_set));
 	m_mainlatch->q_out_cb<1>().set(FUNC(sauro_state::coin_w<0>));
 	m_mainlatch->q_out_cb<2>().set(FUNC(sauro_state::coin_w<1>));
 	m_mainlatch->q_out_cb<3>().set_nop(); // sound IRQ trigger?

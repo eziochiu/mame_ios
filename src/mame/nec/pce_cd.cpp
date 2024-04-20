@@ -2,7 +2,7 @@
 // copyright-holders:Wilbert Pol, Angelo Salese
 /**************************************************************************************************
 
-PC Engine CD HW notes:
+PC Engine CD HW sub-portion:
 
 TODO:
 - Rewrite SCSI to honor actual nscsi_device;
@@ -23,6 +23,7 @@ TODO:
 - Audio CD player rewind/fast forward don't work properly
   \- never go past 1 minute mark, underflows;
 - Fader feature is sketchy and unchecked against real HW;
+- Implement proper check condition errors (non-SCSI complaint);
 
 **************************************************************************************************/
 
@@ -30,12 +31,12 @@ TODO:
 #include "coreutil.h"
 #include "pce_cd.h"
 
-#define LOG_CMD            (1U <<  1)
-#define LOG_CDDA           (1U <<  2)
-#define LOG_SCSI           (1U <<  3)
-#define LOG_FADER          (1U <<  4)
-#define LOG_IRQ            (1U <<  5)
-#define LOG_SCSIXFER       (1U <<  6) // single byte transfers, verbose
+#define LOG_CMD            (1U << 1)
+#define LOG_CDDA           (1U << 2)
+#define LOG_SCSI           (1U << 3)
+#define LOG_FADER          (1U << 4)
+#define LOG_IRQ            (1U << 5)
+#define LOG_SCSIXFER       (1U << 6) // single byte transfers, verbose
 
 #define VERBOSE (LOG_GENERAL | LOG_CMD | LOG_CDDA | LOG_FADER)
 //#define LOG_OUTPUT_FUNC osd_printf_info
@@ -52,7 +53,7 @@ TODO:
 #define LIVE_SUBQ_VIEW    0
 #define LIVE_ADPCM_VIEW   0
 
-#define PCE_CD_CLOCK    9216000
+static constexpr XTAL PCE_CD_CLOCK = XTAL(9'216'000);
 
 
 // TODO: correct name, split into incremental HuCard slot devices
@@ -81,8 +82,10 @@ void pce_cd_device::regs_map(address_map &map)
 pce_cd_device::pce_cd_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, PCE_CD, tag, owner, clock)
 	, device_memory_interface(mconfig, *this)
+	, device_mixer_interface(mconfig, *this, 2)
 	, m_space_config("io", ENDIANNESS_LITTLE, 8, 4, 0, address_map_constructor(FUNC(pce_cd_device::regs_map), this))
-	, m_maincpu(*this, ":maincpu")
+	, m_maincpu(*this, finder_base::DUMMY_TAG)
+	, m_irq_cb(*this)
 	, m_msm(*this, "msm5205")
 	, m_cdda(*this, "cdda")
 	, m_nvram(*this, "bram")
@@ -115,9 +118,6 @@ void pce_cd_device::device_start()
 	m_command_buffer = make_unique_clear<uint8_t[]>(PCE_CD_COMMAND_BUFFER_SIZE);
 	m_command_buffer_index = 0;
 
-	/* Set up Arcade Card RAM buffer */
-	m_acard_ram = make_unique_clear<uint8_t[]>(PCE_ACARD_RAM_SIZE);
-
 	m_data_buffer = make_unique_clear<uint8_t[]>(8192);
 	m_data_buffer_size = 0;
 	m_data_buffer_index = 0;
@@ -141,8 +141,6 @@ void pce_cd_device::device_start()
 
 	m_ack_clear_timer = timer_alloc(FUNC(pce_cd_device::clear_ack), this);
 	m_ack_clear_timer->adjust(attotime::never);
-
-	// m_cd_file pointer is setup at a later stage because it is still empty when this function is called
 
 	// TODO: add proper restore for the cd data...
 	save_pointer(NAME(m_bram), PCE_BRAM_SIZE * 2);
@@ -181,14 +179,6 @@ void pce_cd_device::device_start()
 	save_item(NAME(m_data_buffer_size));
 	save_item(NAME(m_data_buffer_index));
 	save_item(NAME(m_data_transferred));
-	save_pointer(NAME(m_acard_ram), PCE_ACARD_RAM_SIZE);
-	save_item(NAME(m_acard_latch));
-	save_item(NAME(m_acard_ctrl));
-	save_item(NAME(m_acard_base_addr));
-	save_item(NAME(m_acard_addr_offset));
-	save_item(NAME(m_acard_addr_inc));
-	save_item(NAME(m_acard_shift));
-	save_item(NAME(m_acard_shift_reg));
 	save_item(NAME(m_current_frame));
 	save_item(NAME(m_end_frame));
 	save_item(NAME(m_last_frame));
@@ -240,13 +230,11 @@ void pce_cd_device::device_reset()
 void pce_cd_device::late_setup()
 {
 	// at device start, the cdrom is not 'ready' yet, so we postpone this part of the initialization at machine_start in the driver
-	m_cd_file = m_cdrom->get_cdrom_file();
-	if (m_cd_file)
+	if (m_cdrom->exists())
 	{
-		m_toc = &m_cd_file->get_toc();
-		m_cdda->set_cdrom(m_cd_file);
-		m_last_frame = m_cd_file->get_track_start(m_cd_file->get_last_track() - 1);
-		m_last_frame += m_toc->tracks[m_cd_file->get_last_track() - 1].frames;
+		m_toc = &m_cdrom->get_toc();
+		m_last_frame = m_cdrom->get_track_start(m_cdrom->get_last_track() - 1);
+		m_last_frame += m_toc->tracks[m_cdrom->get_last_track() - 1].frames;
 		m_end_frame = m_last_frame;
 	}
 
@@ -275,13 +263,14 @@ void pce_cd_device::device_add_mconfig(machine_config &config)
 	MSM5205(config, m_msm, PCE_CD_CLOCK / 6);
 	m_msm->vck_legacy_callback().set(FUNC(pce_cd_device::msm5205_int)); /* interrupt function */
 	m_msm->set_prescaler_selector(msm5205_device::S48_4B);  /* 1/48 prescaler, 4bit data */
-	m_msm->add_route(ALL_OUTPUTS, "^lspeaker", 0.50);
-	m_msm->add_route(ALL_OUTPUTS, "^rspeaker", 0.50);
+	m_msm->add_route(ALL_OUTPUTS, *this, 0.50, AUTO_ALLOC_INPUT, 0);
+	m_msm->add_route(ALL_OUTPUTS, *this, 0.50, AUTO_ALLOC_INPUT, 1);
 
 	CDDA(config, m_cdda);
+	m_cdda->set_cdrom_tag(m_cdrom);
 	m_cdda->audio_end_cb().set(FUNC(pce_cd_device::cdda_end_mark_cb));
-	m_cdda->add_route(0, "^lspeaker", 1.00);
-	m_cdda->add_route(1, "^rspeaker", 1.00);
+	m_cdda->add_route(0, *this, 1.00, AUTO_ALLOC_INPUT, 0);
+	m_cdda->add_route(1, *this, 1.00, AUTO_ALLOC_INPUT, 1);
 }
 
 void pce_cd_device::adpcm_stop(uint8_t irq_flag)
@@ -310,7 +299,7 @@ void pce_cd_device::adpcm_play()
   the MSM5205. Currently we can only use static clocks for the
   MSM5205.
  */
-WRITE_LINE_MEMBER( pce_cd_device::msm5205_int )
+void pce_cd_device::msm5205_int(int state)
 {
 	uint8_t msm_data;
 
@@ -381,13 +370,14 @@ void pce_cd_device::reply_status_byte(uint8_t status)
 void pce_cd_device::test_unit_ready()
 {
 	LOGCMD("0x00 TEST UNIT READY: status send ");
-	if (m_cd_file)
+	if (m_cdrom->exists())
 	{
 		LOGCMD("STATUS_OK\n");
 		reply_status_byte(SCSI_STATUS_OK);
 	}
 	else
 	{
+		// TODO: sense key/ASC/ASCQ
 		LOGCMD("CHECK_CONDITION\n");
 		reply_status_byte(SCSI_CHECK_CONDITION);
 	}
@@ -400,9 +390,9 @@ void pce_cd_device::read_6()
 	uint32_t frame_count = m_command_buffer[4];
 	LOGCMD("0x08 READ(6): frame: %08x size: %08x\n", frame, frame_count);
 
-	/* Check for presence of a CD */
-	if (!m_cd_file)
+	if (!m_cdrom->exists())
 	{
+		// TODO: sense key/ASC/ASCQ
 		reply_status_byte(SCSI_CHECK_CONDITION);
 		return;
 	}
@@ -440,9 +430,9 @@ void pce_cd_device::nec_set_audio_start_position()
 	const uint8_t mode = m_command_buffer[9] & 0xc0;
 	LOGCMD("0xd8 SET AUDIO PLAYBACK START POSITION (NEC): mode %02x\n", mode);
 
-	if (!m_cd_file)
+	if (!m_cdrom->exists())
 	{
-		/* Throw some error here */
+		// TODO: sense key/ASC/ASCQ
 		reply_status_byte(SCSI_CHECK_CONDITION);
 		return;
 	}
@@ -460,7 +450,7 @@ void pce_cd_device::nec_set_audio_start_position()
 			const u8 f = bcd_2_dec(m_command_buffer[4]);
 			frame = f + 75 * (s + m * 60);
 
-			const u32 pregap = m_toc->tracks[m_cd_file->get_track(frame)].pregap;
+			const u32 pregap = m_toc->tracks[m_cdrom->get_track(frame)].pregap;
 
 			LOGCMD("MSF=%d %02d:%02d:%02d (pregap = %d)\n", frame, m, s, f, pregap);
 			// PCE tries to be clever here and set (start of track + track pregap size) to skip the pregap
@@ -473,7 +463,7 @@ void pce_cd_device::nec_set_audio_start_position()
 		case 0x80:
 		{
 			const u8 track_number = bcd_2_dec(m_command_buffer[2]);
-			const u32 pregap = m_toc->tracks[m_cd_file->get_track(track_number - 1)].pregap;
+			const u32 pregap = m_toc->tracks[m_cdrom->get_track(track_number - 1)].pregap;
 			LOGCMD("TRACK=%d (pregap = %d)\n", track_number, pregap);
 			frame = m_toc->tracks[ track_number - 1 ].logframeofs;
 			// Not right for emeraldd, breaks intro lip sync
@@ -518,8 +508,8 @@ void pce_cd_device::nec_set_audio_start_position()
 		else
 		{
 			//m_cdda_status = PCE_CD_CDDA_PLAYING;
-			m_end_frame = m_toc->tracks[ m_cd_file->get_track(m_current_frame) ].logframeofs
-						+ m_toc->tracks[ m_cd_file->get_track(m_current_frame) ].logframes;
+			m_end_frame = m_toc->tracks[ m_cdrom->get_track(m_current_frame) ].logframeofs
+						+ m_toc->tracks[ m_cdrom->get_track(m_current_frame) ].logframes;
 
 			LOGCDDA("Audio start (end of track) current %d end %d\n", m_current_frame, m_end_frame);
 			// Several places definitely don't want this to start redbook,
@@ -558,13 +548,12 @@ void pce_cd_device::nec_set_audio_stop_position()
 	const uint8_t mode = m_command_buffer[9] & 0xc0;
 	LOGCMD("0xd9 SET AUDIO PLAYBACK END POSITION (NEC): mode %02x\n", mode);
 
-	if (!m_cd_file)
+	if (!m_cdrom->exists())
 	{
-		/* Throw some error here */
+		// TODO: sense key/ASC/ASCQ
 		reply_status_byte(SCSI_CHECK_CONDITION);
 		return;
 	}
-
 
 	switch (mode)
 	{
@@ -578,7 +567,7 @@ void pce_cd_device::nec_set_audio_stop_position()
 			const u8 m = bcd_2_dec(m_command_buffer[2]);
 			const u8 s = bcd_2_dec(m_command_buffer[3]);
 			const u8 f = bcd_2_dec(m_command_buffer[4]);
-			const u32 pregap = m_toc->tracks[m_cd_file->get_track(frame)].pregap;
+			const u32 pregap = m_toc->tracks[m_cdrom->get_track(frame)].pregap;
 
 			frame = f + 75 * (s + m * 60);
 			LOGCMD("MSF=%d %02d:%02d:%02d (pregap = %d)\n", frame, m, s, f, pregap);
@@ -588,7 +577,7 @@ void pce_cd_device::nec_set_audio_stop_position()
 		case 0x80:
 		{
 			const u8 track_number = bcd_2_dec(m_command_buffer[2]);
-			const u32 pregap = m_toc->tracks[m_cd_file->get_track(track_number - 1)].pregap;
+			const u32 pregap = m_toc->tracks[m_cdrom->get_track(track_number - 1)].pregap;
 			// NB: crazyhos uses this command with track = 1 on pre-title screen intro.
 			// It's not supposed to playback anything according to real HW refs.
 			frame = m_toc->tracks[ track_number - 1 ].logframeofs;
@@ -645,8 +634,9 @@ void pce_cd_device::nec_set_audio_stop_position()
 void pce_cd_device::nec_pause()
 {
 	/* If no cd mounted throw an error */
-	if (!m_cd_file)
+	if (!m_cdrom->exists())
 	{
+		// TODO: sense key/ASC/ASCQ
 		reply_status_byte(SCSI_CHECK_CONDITION);
 		return;
 	}
@@ -656,6 +646,7 @@ void pce_cd_device::nec_pause()
 	/* If there was no cdda playing, throw an error */
 	if (m_cdda_status == PCE_CD_CDDA_OFF)
 	{
+		// TODO: sense key/ASC/ASCQ
 		LOG("Issued SCSI_CHECK_CONDITION in 0xda!\n");
 		reply_status_byte(SCSI_CHECK_CONDITION);
 		return;
@@ -675,9 +666,9 @@ void pce_cd_device::nec_get_subq()
 	uint32_t msf_abs, msf_rel, track, frame;
 	//LOGCMD("0xdd READ SUBCHANNEL Q (NEC) %d\n", m_cdda_status);
 
-	if (!m_cd_file)
+	if (!m_cdrom->exists())
 	{
-		/* Throw some error here */
+		// TODO: sense key/ASC/ASCQ
 		reply_status_byte(SCSI_CHECK_CONDITION);
 		return;
 	}
@@ -700,10 +691,10 @@ void pce_cd_device::nec_get_subq()
 	}
 
 	msf_abs = cdrom_file::lba_to_msf_alt(frame);
-	track = m_cd_file->get_track(frame);
-	msf_rel = cdrom_file::lba_to_msf_alt(frame - m_cd_file->get_track_start(track));
+	track = m_cdrom->get_track(frame);
+	msf_rel = cdrom_file::lba_to_msf_alt(frame - m_cdrom->get_track_start(track));
 
-	m_data_buffer[1] = 0x01 | ((m_cd_file->get_track_type(m_cd_file->get_track(track+1)) == cdrom_file::CD_TRACK_AUDIO) ? 0x00 : 0x40);
+	m_data_buffer[1] = 0x01 | ((m_cdrom->get_track_type(m_cdrom->get_track(track+1)) == cdrom_file::CD_TRACK_AUDIO) ? 0x00 : 0x40);
 	// track
 	m_data_buffer[2] = dec_2_bcd(track+1);
 	// index
@@ -742,13 +733,14 @@ void pce_cd_device::nec_get_dir_info()
 	uint32_t frame, msf, track = 0;
 	LOGCMD("0xde GET DIR INFO (NEC)\n");
 
-	if (!m_cd_file)
+	if (!m_cdrom->exists())
 	{
-		/* Throw some error here */
+		// TODO: sense key/ASC/ASCQ
 		reply_status_byte(SCSI_CHECK_CONDITION);
+		return;
 	}
 
-	const cdrom_file::toc &toc = m_cd_file->get_toc();
+	const cdrom_file::toc &toc = m_cdrom->get_toc();
 
 	switch (m_command_buffer[1])
 	{
@@ -810,6 +802,7 @@ void pce_cd_device::nec_get_dir_info()
 
 void pce_cd_device::end_of_list()
 {
+	// TODO: sense key/ASC/ASCQ
 	reply_status_byte(SCSI_CHECK_CONDITION);
 }
 
@@ -875,7 +868,7 @@ void pce_cd_device::handle_data_output()
 	}
 }
 
-WRITE_LINE_MEMBER(pce_cd_device::cdda_end_mark_cb)
+void pce_cd_device::cdda_end_mark_cb(int state)
 {
 	if (state != ASSERT_LINE)
 		return;
@@ -1083,11 +1076,11 @@ void pce_cd_device::set_irq_line(int num, int state)
 			, m_irq_mask & 0x7c
 			, m_irq_status & 0x7c
 		);
-		m_maincpu->set_input_line(1, ASSERT_LINE);
+		m_irq_cb(ASSERT_LINE);
 	}
 	else
 	{
-		m_maincpu->set_input_line(1, CLEAR_LINE);
+		m_irq_cb(CLEAR_LINE);
 	}
 }
 
@@ -1097,7 +1090,7 @@ TIMER_CALLBACK_MEMBER(pce_cd_device::data_timer_callback)
 	{
 		/* Read next data sector */
 		LOGSCSI("read sector %d\n", m_current_frame);
-		if (! m_cd_file->read_data(m_current_frame, m_data_buffer.get(), cdrom_file::CD_TRACK_MODE1))
+		if (! m_cdrom->read_data(m_current_frame, m_data_buffer.get(), cdrom_file::CD_TRACK_MODE1))
 		{
 			LOGSCSI("Mode1 CD read failed for frame #%d\n", m_current_frame);
 		}
@@ -1315,10 +1308,12 @@ uint8_t pce_cd_device::irq_status_r()
 {
 	uint8_t res = m_irq_status & 0x6e;
 	// a read here locks the BRAM
-	m_bram_locked = 1;
+	if (!machine().side_effects_disabled())
+		m_bram_locked = 1;
 	res |= (m_cd_motor_on ? 0x10 : 0);
 	// TODO: gross hack, needs actual behaviour of CDDA data select
-	m_irq_status ^= 0x02;
+	if (!machine().side_effects_disabled())
+		m_irq_status ^= 0x02;
 	return res;
 }
 
@@ -1662,7 +1657,8 @@ uint8_t pce_cd_device::get_adpcm_ram_byte()
 {
 	if (m_adpcm_read_buf > 0)
 	{
-		m_adpcm_read_buf--;
+		if (!machine().side_effects_disabled())
+			m_adpcm_read_buf--;
 		return 0;
 	}
 	else
@@ -1670,7 +1666,8 @@ uint8_t pce_cd_device::get_adpcm_ram_byte()
 		uint8_t res;
 
 		res = m_adpcm_ram[m_adpcm_read_ptr];
-		m_adpcm_read_ptr = ((m_adpcm_read_ptr + 1) & 0xffff);
+		if (!machine().side_effects_disabled())
+			m_adpcm_read_ptr = ((m_adpcm_read_ptr + 1) & 0xffff);
 
 		return res;
 	}
@@ -1697,155 +1694,4 @@ void pce_cd_device::intf_w(offs_t offset, uint8_t data)
 
 	address_space &io_space = this->space(AS_IO);
 	io_space.write_byte(offset & 0xf, data);
-}
-
-/*
- *
- * PC Engine Arcade Card emulation
- *
- */
-
-
-
-uint8_t pce_cd_device::acard_r(offs_t offset)
-{
-	uint8_t r_num;
-
-	if ((offset & 0x2e0) == 0x2e0)
-	{
-		switch (offset & 0x2ef)
-		{
-			case 0x2e0: return (m_acard_shift >> 0)  & 0xff;
-			case 0x2e1: return (m_acard_shift >> 8)  & 0xff;
-			case 0x2e2: return (m_acard_shift >> 16) & 0xff;
-			case 0x2e3: return (m_acard_shift >> 24) & 0xff;
-			case 0x2e4: return (m_acard_shift_reg);
-			case 0x2e5: return m_acard_latch;
-			case 0x2ee: return 0x10;
-			case 0x2ef: return 0x51;
-		}
-
-		return 0;
-	}
-
-	r_num = (offset & 0x30) >> 4;
-
-	switch (offset & 0x0f)
-	{
-		case 0x00:
-		case 0x01:
-		{
-			uint8_t res;
-			if (m_acard_ctrl[r_num] & 2)
-				res = m_acard_ram[(m_acard_base_addr[r_num] + m_acard_addr_offset[r_num]) & 0x1fffff];
-			else
-				res = m_acard_ram[m_acard_base_addr[r_num] & 0x1fffff];
-
-			if (m_acard_ctrl[r_num] & 0x1)
-			{
-				if (m_acard_ctrl[r_num] & 0x10)
-				{
-					m_acard_base_addr[r_num] += m_acard_addr_inc[r_num];
-					m_acard_base_addr[r_num] &= 0xffffff;
-				}
-				else
-				{
-					m_acard_addr_offset[r_num] += m_acard_addr_inc[r_num];
-				}
-			}
-
-			return res;
-		}
-		case 0x02: return (m_acard_base_addr[r_num] >> 0) & 0xff;
-		case 0x03: return (m_acard_base_addr[r_num] >> 8) & 0xff;
-		case 0x04: return (m_acard_base_addr[r_num] >> 16) & 0xff;
-		case 0x05: return (m_acard_addr_offset[r_num] >> 0) & 0xff;
-		case 0x06: return (m_acard_addr_offset[r_num] >> 8) & 0xff;
-		case 0x07: return (m_acard_addr_inc[r_num] >> 0) & 0xff;
-		case 0x08: return (m_acard_addr_inc[r_num] >> 8) & 0xff;
-		case 0x09: return m_acard_ctrl[r_num];
-		default:   return 0;
-	}
-}
-
-void pce_cd_device::acard_w(offs_t offset, uint8_t data)
-{
-	uint8_t w_num;
-
-	if ((offset & 0x2e0) == 0x2e0)
-	{
-		switch (offset & 0x0f)
-		{
-			case 0: m_acard_shift = (data & 0xff) | (m_acard_shift & 0xffffff00); break;
-			case 1: m_acard_shift = (data << 8)   | (m_acard_shift & 0xffff00ff); break;
-			case 2: m_acard_shift = (data << 16)  | (m_acard_shift & 0xff00ffff); break;
-			case 3: m_acard_shift = (data << 24)  | (m_acard_shift & 0x00ffffff); break;
-			case 4:
-			{
-				m_acard_shift_reg = data & 0x0f;
-
-				if (m_acard_shift_reg != 0)
-				{
-					m_acard_shift = (m_acard_shift_reg < 8) ?
-					(m_acard_shift << m_acard_shift_reg)
-					: (m_acard_shift >> (16 - m_acard_shift_reg));
-				}
-			}
-				break;
-			case 5: m_acard_latch = data; break;
-		}
-	}
-	else
-	{
-		w_num = (offset & 0x30) >> 4;
-
-		switch (offset & 0x0f)
-		{
-			case 0x00:
-			case 0x01:
-				if (m_acard_ctrl[w_num] & 2)
-					m_acard_ram[(m_acard_base_addr[w_num] + m_acard_addr_offset[w_num]) & 0x1fffff] = data;
-				else
-					m_acard_ram[m_acard_base_addr[w_num] & 0x1FFFFF] = data;
-
-				if (m_acard_ctrl[w_num] & 0x1)
-				{
-					if (m_acard_ctrl[w_num] & 0x10)
-					{
-						m_acard_base_addr[w_num] += m_acard_addr_inc[w_num];
-						m_acard_base_addr[w_num] &= 0xffffff;
-					}
-					else
-					{
-						m_acard_addr_offset[w_num] += m_acard_addr_inc[w_num];
-					}
-				}
-
-				break;
-
-			case 0x02: m_acard_base_addr[w_num] = (data & 0xff) | (m_acard_base_addr[w_num] & 0xffff00);  break;
-			case 0x03: m_acard_base_addr[w_num] = (data << 8) | (m_acard_base_addr[w_num] & 0xff00ff);        break;
-			case 0x04: m_acard_base_addr[w_num] = (data << 16) | (m_acard_base_addr[w_num] & 0x00ffff);   break;
-			case 0x05: m_acard_addr_offset[w_num] = (data & 0xff) | (m_acard_addr_offset[w_num] & 0xff00);    break;
-			case 0x06:
-				m_acard_addr_offset[w_num] = (data << 8) | (m_acard_addr_offset[w_num] & 0x00ff);
-
-				if ((m_acard_ctrl[w_num] & 0x60) == 0x40)
-				{
-					m_acard_base_addr[w_num] += m_acard_addr_offset[w_num] + ((m_acard_ctrl[w_num] & 0x08) ? 0xff0000 : 0);
-					m_acard_base_addr[w_num] &= 0xffffff;
-				}
-				break;
-			case 0x07: m_acard_addr_inc[w_num] = (data & 0xff) | (m_acard_addr_inc[w_num] & 0xff00);      break;
-			case 0x08: m_acard_addr_inc[w_num] = (data << 8) | (m_acard_addr_inc[w_num] & 0x00ff);            break;
-			case 0x09: m_acard_ctrl[w_num] = data & 0x7f;                                              break;
-			case 0x0a:
-				if ((m_acard_ctrl[w_num] & 0x60) == 0x60)
-				{
-					m_acard_base_addr[w_num] += m_acard_addr_offset[w_num];
-					m_acard_base_addr[w_num] &= 0xffffff;
-				}
-				break;
-		}
-	}
 }
