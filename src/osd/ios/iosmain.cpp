@@ -70,7 +70,7 @@ extern "C" int myosd_main(int argc, char** argv, myosd_callbacks* callbacks, siz
     memset(&host_callbacks, 0, sizeof(host_callbacks));
     memcpy(&host_callbacks, callbacks, MIN(sizeof(host_callbacks), sizeof(myosd_callbacks)));
     
-    if (argc == 0) {
+    if (argc == 0 || argv == NULL) {
         static const char* args[] = {"myosd"};
         argc = 1;
         argv = (char**)args;
@@ -579,6 +579,9 @@ void osd_setup_osd_specific_emu_options(emu_options &opts)
     opts.add_entries(s_option_entries);
 }
 
+// TODO: the 7z library has changed, this is removed for now.
+#if 0
+
 //============================================================
 //  myosd_enumerate_7z
 //  give the host the ability to enumerate the file names in a 7z file
@@ -595,7 +598,7 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
 {
     CSzArEx db;
     CFileInStream archiveStream;
-    CLookToRead lookStream;
+    CLookToRead2 lookStream;
     ISzAlloc alloc = {SzAlloc, SzFree};
     ISzAlloc alloc_temp = {SzAllocTemp, SzFreeTemp};
     
@@ -603,16 +606,16 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
         return -1;
     
     FileInStream_CreateVTable(&archiveStream);
-    LookToRead_CreateVTable(&lookStream, False);
+    LookToRead2_CreateVTable(&lookStream, False);
     
-    lookStream.realStream = &archiveStream.s;
-    LookToRead_Init(&lookStream);
+    lookStream.realStream = &archiveStream.vt;
+    LookToRead2_INIT(&lookStream);
 
     if (g_CrcTable[1] == 0)
         CrcGenerateTable(); // *YES* this is needed!!
 
     SzArEx_Init(&db);
-    int err = SzArEx_Open(&db, &lookStream.s, &alloc, &alloc_temp);
+    int err = SzArEx_Open(&db, &lookStream.vt, &alloc, &alloc_temp);
     if (err == 0) {
 
         uint32_t blockIndex = 0xFFFFFFFF; /* it can have any value before first call (if outBuffer = 0) */
@@ -635,7 +638,7 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
                 size_t offset = 0;
                 size_t outSizeProcessed = 0;
                 
-                int res = SzArEx_Extract(&db, &lookStream.s, i,
+                int res = SzArEx_Extract(&db, &lookStream.vt, i,
                     &blockIndex, &outBuffer, &outBufferSize,
                     &offset, &outSizeProcessed,
                     &alloc, &alloc_temp);
@@ -655,5 +658,7 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
     
     return err;
 }
+
+#endif
 
 

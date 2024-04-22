@@ -42,6 +42,8 @@ project ("osd_" .. _OPTIONS["osd"])
         MAME_DIR .. "src/osd/osdnet.h",
         MAME_DIR .. "src/osd/watchdog.cpp",
         MAME_DIR .. "src/osd/watchdog.h",
+        MAME_DIR .. "src/osd/interface/nethandler.cpp",
+        MAME_DIR .. "src/osd/interface/nethandler.h",
     }
  
 	includedirs {

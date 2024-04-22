@@ -335,7 +335,8 @@ void input_profile_init(running_machine &machine)
 //============================================================
 void ios_osd_interface::input_update(bool relative_reset)
 {
-    osd_printf_verbose("ios_osd_interface::input_update\n");
+    // TODO: handle relative_reset!!
+    osd_printf_verbose("ios_osd_interface::input_update relative_reset=%d\n", relative_reset);
     
     // fill in the input profile the first time
     if (g_input.num_ways == 0) {
@@ -354,9 +355,11 @@ void ios_osd_interface::input_update(bool relative_reset)
     // determine if we should disable the rest of the UI
     bool has_keyboard = g_input.num_keyboard != 0; // machine_info().has_keyboard();
     
+// TODO: need way to get ui_active() state, for NOW just assume ui_active==true
     //mame_ui_manager *ui = dynamic_cast<mame_ui_manager *>(&machine.ui());
     //bool ui_disabled = (has_keyboard && !ui->ui_active());
     bool ui_disabled = (has_keyboard && false);
+// TODO: need way to get ui_active() state, for NOW just assume ui_active==true
 
     // set the current input mode
     g_input.input_mode = in_menu ? MYOSD_INPUT_MODE_MENU : (ui_disabled ? MYOSD_INPUT_MODE_KEYBOARD : MYOSD_INPUT_MODE_NORMAL);
@@ -385,12 +388,6 @@ void ios_osd_interface::check_osd_inputs()
 //  customize_input_type_list
 //============================================================
 
-// joystick D-Pad
-#define JOYCODE_HATUP(n)    input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1UP)
-#define JOYCODE_HATDOWN(n)  input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1DOWN)
-#define JOYCODE_HATLEFT(n)  input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1LEFT)
-#define JOYCODE_HATRIGHT(n) input_code(DEVICE_CLASS_JOYSTICK, n, ITEM_CLASS_SWITCH, ITEM_MODIFIER_NONE, ITEM_ID_HAT1RIGHT)
-
 void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> &typelist)
 {
     // This function is called on startup, before reading the
@@ -398,12 +395,12 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
     // default control mappings you want. It is quite possible
     // you won't need to change a thing.
     
-    //osd_printf_debug("INPUT TYPE LIST\n");
+    osd_printf_verbose("INPUT TYPE LIST\n");
 
     // loop over the defaults
     for (input_type_entry &entry : typelist) {
         
-        //osd_printf_debug("  %s TYPE:%d PLAYER:%d\n", entry.name() ?: "", entry.type(), entry.player());
+        osd_printf_verbose("  %s TYPE:%d PLAYER:%d\n", entry.name().c_str(), entry.type(), entry.player());
         
         switch (entry.type())
         {
@@ -431,18 +428,29 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
 
             // allow the DPAD to move the UI
             case IPT_UI_UP:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATUP(0);
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1UP;
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_Y_UP_SWITCH;
                 break;
             case IPT_UI_DOWN:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATDOWN(0);
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1DOWN;
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_Y_DOWN_SWITCH;
                 break;
             case IPT_UI_LEFT:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATLEFT(0);
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1LEFT_INDEXED(0); // JOYCODE_HAT1LEFT
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_X_LEFT_SWITCH;
                 break;
             case IPT_UI_RIGHT:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATRIGHT(0);
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1RIGHT;
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_X_RIGHT_SWITCH;
                 break;
-
+            case IPT_UI_SELECT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON1;
+                break;
+            //case IPT_UI_CANCEL:
+            case IPT_UI_BACK:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON2;
+                break;
+                
             /* allow L1 and R1 to move pages in MAME UI */
             case IPT_UI_PAGE_UP:
                 entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON5;
@@ -451,25 +459,111 @@ void ios_osd_interface::customize_input_type_list(std::vector<input_type_entry> 
                 entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON6;
                 break;
 
-            /* these are mostly the same as MAME defaults, except we add dpad to them */
+            /* left joystick, these are mostly the same as MAME defaults, except we add dpad to them */
             case IPT_JOYSTICK_UP:
             case IPT_JOYSTICKLEFT_UP:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATUP(entry.player());
-                break;
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1UP_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_Y_UP_SWITCH_INDEXED(entry.player());
+               break;
             case IPT_JOYSTICK_DOWN:
             case IPT_JOYSTICKLEFT_DOWN:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATDOWN(entry.player());
-                break;
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1DOWN_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_Y_DOWN_SWITCH_INDEXED(entry.player());
+               break;
             case IPT_JOYSTICK_LEFT:
             case IPT_JOYSTICKLEFT_LEFT:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATLEFT(entry.player());
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1LEFT_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_X_LEFT_SWITCH_INDEXED(entry.player());
                 break;
             case IPT_JOYSTICK_RIGHT:
             case IPT_JOYSTICKLEFT_RIGHT:
-                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HATRIGHT(entry.player());
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_HAT1RIGHT_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_X_RIGHT_SWITCH_INDEXED(entry.player());
                 break;
 
-                // leave everything else alone
+            // right joystick
+            case IPT_JOYSTICKRIGHT_UP:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_U_NEG_SWITCH_INDEXED(entry.player());
+                break;
+            case IPT_JOYSTICKRIGHT_DOWN:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_U_POS_SWITCH_INDEXED(entry.player());
+                break;
+            case IPT_JOYSTICKRIGHT_RIGHT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_V_POS_SWITCH_INDEXED(entry.player());
+                break;
+            case IPT_JOYSTICKRIGHT_LEFT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_V_NEG_SWITCH_INDEXED(entry.player());
+                break;
+                
+            // analog joystick
+            case IPT_AD_STICK_X:
+            case IPT_TRACKBALL_X:
+            case IPT_LIGHTGUN_X:
+            case IPT_PEDAL:
+            case IPT_DIAL:
+            case IPT_PADDLE:
+            case IPT_POSITIONAL:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_X_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_DECREMENT) |= JOYCODE_HAT1LEFT_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_INCREMENT) |= JOYCODE_HAT1RIGHT_INDEXED(entry.player());
+                break;
+            case IPT_AD_STICK_Y:
+            case IPT_TRACKBALL_Y:
+            case IPT_LIGHTGUN_Y:
+            case IPT_DIAL_V:
+            case IPT_PADDLE_V:
+            case IPT_POSITIONAL_V:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_Y_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_DECREMENT) |= JOYCODE_HAT1UP_INDEXED(entry.player());
+                entry.defseq(SEQ_TYPE_INCREMENT) |= JOYCODE_HAT1DOWN_INDEXED(entry.player());
+                break;
+
+            case IPT_AD_STICK_Z:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_Z_INDEXED(entry.player());
+                break;
+
+            // A,B,X,Y
+            case IPT_BUTTON1:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON1_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON2:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON2_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON3:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON3_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON4:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON4_INDEXED(entry.player());
+                break;
+            // L,R
+            case IPT_BUTTON5:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON5_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON6:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON6_INDEXED(entry.player());
+                break;
+            // L2,R2,L3,R3
+            case IPT_BUTTON7:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON7_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON8:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON8_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON9:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON9_INDEXED(entry.player());
+                break;
+            case IPT_BUTTON10:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_BUTTON10_INDEXED(entry.player());
+                break;
+            // Select, Start
+            case IPT_SELECT:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_SELECT_INDEXED(entry.player());
+                break;
+            case IPT_START:
+                entry.defseq(SEQ_TYPE_STANDARD) |= JOYCODE_START_INDEXED(entry.player());
+                break;
+
+            // leave everything else alone
             default:
                 break;
         }
