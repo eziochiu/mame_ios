@@ -40,6 +40,11 @@ extern int myosd_display_height;
 //  TYPE DEFINITIONS
 //============================================================
 
+// forward references
+class input_type_entry;
+namespace osd { class midi_input_port; class midi_output_port; }
+namespace ui { class menu_item; }
+
 class ios_osd_interface : public osd_interface, osd_output
 {
 public:
@@ -50,7 +55,8 @@ public:
     // general overridables
     virtual void init(running_machine &machine) override;
     virtual void update(bool skip_redraw) override;
-    virtual void input_update() override;
+    virtual void input_update(bool relative_reset) override;
+    virtual void check_osd_inputs() override;
     virtual void set_verbose(bool verbose) override { m_verbose = verbose; }
 
     // debugger overridables
@@ -79,10 +85,11 @@ public:
     virtual bool execute_command(const char *command) override {return true;}
 
     // midi interface
-    virtual std::unique_ptr<osd_midi_device> create_midi_device() override {return nullptr;}
+    virtual std::unique_ptr<osd::midi_input_port> create_midi_input(std::string_view name) override {return nullptr;}
+    virtual std::unique_ptr<osd::midi_output_port> create_midi_output(std::string_view name) override {return nullptr;}
     
     // osd_output
-    virtual void output_callback(osd_output_channel channel, const util::format_argument_pack<std::ostream> &args) override;
+    virtual void output_callback(osd_output_channel channel, const util::format_argument_pack<char> &args) override;
     
     // getters
     running_machine &machine() const { assert(m_machine != nullptr); return *m_machine; }

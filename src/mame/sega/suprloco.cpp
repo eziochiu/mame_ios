@@ -36,7 +36,7 @@ Sega PCB 834-5137
 
 
 // configurable logging
-#define LOG_CTRLBIT4     (1U <<  1)
+#define LOG_CTRLBIT4     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_CTRLBIT4)
 
@@ -112,8 +112,6 @@ private:
 	void sound_map(address_map &map);
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -334,8 +332,6 @@ uint32_t suprloco_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 void suprloco_state::main_map(address_map &map)
 {

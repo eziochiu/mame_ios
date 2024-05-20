@@ -8,7 +8,7 @@
     Crazy Blocks
     (c)1983 Kiwako/ECI
 
-    Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 2000/03/20 -
+    Driver by Takahiro Nogi 2000/03/20 -
 
     Block Buster
     (c)1983 Kiwako/ECI
@@ -98,8 +98,6 @@ private:
 	void program_map(address_map &map);
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -206,7 +204,7 @@ void mrjong_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 		int sy = m_videoram[offs + 0];
 		if (flip_screen())
 		{
-			sx = 208 - sx;
+			sx = 192 - sx;
 			sy = 240 - sy;
 			flipx = !flipx;
 			flipy = !flipy;
@@ -227,8 +225,6 @@ uint32_t mrjong_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 	return 0;
 }
 
-
-// machine
 
 /*************************************
  *

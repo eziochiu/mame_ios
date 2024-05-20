@@ -53,7 +53,8 @@ const size_t debugger_commands::MAX_GLOBALS = 1000;
 
 bool debugger_commands::cheat_address_is_valid(address_space &space, offs_t address)
 {
-	return space.device().memory().translate(space.spacenum(), TRANSLATE_READ, address) && (space.get_write_ptr(address) != nullptr);
+	address_space *tspace;
+	return space.device().memory().translate(space.spacenum(), device_memory_interface::TR_READ, address, tspace) && (tspace->get_write_ptr(address) != nullptr);
 }
 
 
@@ -104,14 +105,15 @@ u64 debugger_commands::cheat_system::read_extended(offs_t address) const
 {
 	address &= space->logaddrmask();
 	u64 value = space->unmap();
-	if (space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, address))
+	address_space *tspace;
+	if (space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, address, tspace))
 	{
 		switch (width)
 		{
-		case 1: value = space->read_byte(address);              break;
-		case 2: value = space->read_word_unaligned(address);    break;
-		case 4: value = space->read_dword_unaligned(address);   break;
-		case 8: value = space->read_qword_unaligned(address);   break;
+		case 1: value = tspace->read_byte(address);              break;
+		case 2: value = tspace->read_word_unaligned(address);    break;
+		case 4: value = tspace->read_dword_unaligned(address);   break;
+		case 8: value = tspace->read_qword_unaligned(address);   break;
 		}
 	}
 	return sign_extend(byte_swap(value));
@@ -168,7 +170,7 @@ debugger_commands::debugger_commands(running_machine& machine, debugger_cpu& cpu
 		if ((valcount == 1) && (blockcount == 1) && strstr(name, "/globals/"))
 		{
 			char symname[100];
-			sprintf(symname, ".%s", strrchr(name, '/') + 1);
+			snprintf(symname, 100, ".%s", strrchr(name, '/') + 1);
 			m_global_array[itemnum].base = base;
 			m_global_array[itemnum].size = valsize;
 			symtable.add(
@@ -467,9 +469,13 @@ void debugger_commands::execute_print(const std::vector<std::string_view> &param
     mini_printf - safe printf to a buffer
 -------------------------------------------------*/
 
-bool debugger_commands::mini_printf(std::ostream &stream, std::string_view format, int params, u64 *param)
+bool debugger_commands::mini_printf(std::ostream &stream, const std::vector<std::string_view> &params)
 {
+	std::string_view const format(params[0]);
 	auto f = format.begin();
+
+	int param = 1;
+	u64 number;
 
 	// parse the string looking for % signs
 	while (f != format.end())
@@ -493,21 +499,48 @@ bool debugger_commands::mini_printf(std::ostream &stream, std::string_view forma
 		// formatting
 		else if (c == '%')
 		{
+			bool left_justify = false;
+			bool zero_fill = false;
 			int width = 0;
-			int zerofill = 0;
+			int precision = 0;
 
-			// parse out the width
-			while (f != format.end() && *f >= '0' && *f <= '9')
+			// parse optional left justification flag
+			if (f != format.end() && *f == '-')
 			{
-				c = *f++;
-				if (c == '0' && width == 0)
-					zerofill = 1;
-				width = width * 10 + (c - '0');
+				left_justify = true;
+				f++;
 			}
-			if (f == format.end()) break;
 
-			// get the format
-			c = *f++;
+			// parse optional zero fill flag
+			if (f != format.end() && *f == '0')
+			{
+				zero_fill = true;
+				f++;
+			}
+
+			// parse optional width
+			while (f != format.end() && isdigit(*f))
+				width = width * 10 + (*f++ - '0');
+			if (f == format.end())
+				break;
+
+			// apply left justification
+			if (left_justify)
+				width = -width;
+
+			if ((c = *f++) == '.')
+			{
+				// parse optional precision
+				while (f != format.end() && isdigit(*f))
+					precision = precision * 10 + (*f++ - '0');
+
+				// get the format
+				if (f != format.end())
+					c = *f++;
+				else
+					break;
+			}
+
 			switch (c)
 			{
 				case '%':
@@ -515,70 +548,89 @@ bool debugger_commands::mini_printf(std::ostream &stream, std::string_view forma
 					break;
 
 				case 'X':
-				case 'x':
-					if (params == 0)
+					if (param < params.size() && m_console.validate_number_parameter(params[param++], number))
+						util::stream_format(stream, zero_fill ? "%0*X" : "%*X", width, number);
+					else
 					{
 						m_console.printf("Not enough parameters for format!\n");
 						return false;
 					}
-					if (u32(*param >> 32) != 0)
-						util::stream_format(stream, zerofill ? "%0*X" : "%*X", (width <= 8) ? 1 : width - 8, u32(*param >> 32));
-					else if (width > 8)
-						util::stream_format(stream, zerofill ? "%0*X" : "%*X", width - 8, 0);
-					util::stream_format(stream, zerofill ? "%0*X" : "%*X", (width < 8) ? width : 8, u32(*param));
-					param++;
-					params--;
+					break;
+				case 'x':
+					if (param < params.size() && m_console.validate_number_parameter(params[param++], number))
+						util::stream_format(stream, zero_fill ? "%0*x" : "%*x", width, number);
+					else
+					{
+						m_console.printf("Not enough parameters for format!\n");
+						return false;
+					}
 					break;
 
 				case 'O':
 				case 'o':
-					if (params == 0)
+					if (param < params.size() && m_console.validate_number_parameter(params[param++], number))
+						util::stream_format(stream, zero_fill ? "%0*o" : "%*o", width, number);
+					else
 					{
 						m_console.printf("Not enough parameters for format!\n");
 						return false;
 					}
-					if (u32(*param >> 60) != 0)
-					{
-						util::stream_format(stream, zerofill ? "%0*o" : "%*o", (width <= 20) ? 1 : width - 20, u32(*param >> 60));
-						util::stream_format(stream, "%0*o", 10, u32(BIT(*param, 30, 30)));
-					}
-					else
-					{
-						if (width > 20)
-							util::stream_format(stream, zerofill ? "%0*o" : "%*o", width - 20, 0);
-						if (u32(BIT(*param, 30, 30)) != 0)
-							util::stream_format(stream, zerofill ? "%0*o" : "%*o", (width <= 10) ? 1 : width - 10, u32(BIT(*param, 30, 30)));
-						else if (width > 10)
-							util::stream_format(stream, zerofill ? "%0*o" : "%*o", width - 10, 0);
-					}
-					util::stream_format(stream, zerofill ? "%0*o" : "%*o", (width < 10) ? width : 10, u32(BIT(*param, 0, 30)));
-					param++;
-					params--;
 					break;
 
 				case 'D':
 				case 'd':
-					if (params == 0)
+					if (param < params.size() && m_console.validate_number_parameter(params[param++], number))
+						util::stream_format(stream, zero_fill ? "%0*d" : "%*d", width, number);
+					else
 					{
 						m_console.printf("Not enough parameters for format!\n");
 						return false;
 					}
-					util::stream_format(stream, zerofill ? "%0*d" : "%*d", width, u32(*param));
-					param++;
-					params--;
-					break;
-				case 'C':
-				case 'c':
-					if (params == 0)
-					{
-						m_console.printf("Not enough parameters for format!\n");
-						return false;
-					}
-					stream << char(*param);
-					param++;
-					params--;
 					break;
 
+				case 'C':
+				case 'c':
+					if (param < params.size() && m_console.validate_number_parameter(params[param++], number))
+						stream << char(number);
+					else
+					{
+						m_console.printf("Not enough parameters for format!\n");
+						return false;
+					}
+					break;
+
+				case 's':
+					{
+						address_space *space;
+						if (param < params.size() && m_console.validate_target_address_parameter(params[param++], -1, space, number))
+						{
+							address_space *tspace;
+							std::string s;
+
+							for (u32 address = u32(number), taddress; space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, taddress = address, tspace); address++)
+							{
+								u8 const data = tspace->read_byte(taddress);
+
+								if (!data)
+									break;
+
+								s += data;
+
+								if (precision == 1)
+									break;
+								else if (precision)
+									precision--;
+							}
+
+							util::stream_format(stream, "%*s", width, s);
+						}
+						else
+						{
+							m_console.printf("Not enough parameters for format!\n");
+							return false;
+						}
+					}
+					break;
 			}
 		}
 
@@ -628,15 +680,9 @@ void debugger_commands::execute_index_command(std::vector<std::string_view> cons
 
 void debugger_commands::execute_printf(const std::vector<std::string_view> &params)
 {
-	/* validate the other parameters */
-	u64 values[MAX_COMMAND_PARAMS];
-	for (int i = 1; i < params.size(); i++)
-		if (!m_console.validate_number_parameter(params[i], values[i]))
-			return;
-
 	/* then do a printf */
 	std::ostringstream buffer;
-	if (mini_printf(buffer, params[0], params.size() - 1, &values[1]))
+	if (mini_printf(buffer, params))
 		m_console.printf("%s\n", std::move(buffer).str());
 }
 
@@ -647,15 +693,9 @@ void debugger_commands::execute_printf(const std::vector<std::string_view> &para
 
 void debugger_commands::execute_logerror(const std::vector<std::string_view> &params)
 {
-	/* validate the other parameters */
-	u64 values[MAX_COMMAND_PARAMS];
-	for (int i = 1; i < params.size(); i++)
-		if (!m_console.validate_number_parameter(params[i], values[i]))
-			return;
-
 	/* then do a printf */
 	std::ostringstream buffer;
-	if (mini_printf(buffer, params[0], params.size() - 1, &values[1]))
+	if (mini_printf(buffer, params))
 		m_machine.logerror("%s", std::move(buffer).str());
 }
 
@@ -666,15 +706,9 @@ void debugger_commands::execute_logerror(const std::vector<std::string_view> &pa
 
 void debugger_commands::execute_tracelog(const std::vector<std::string_view> &params)
 {
-	/* validate the other parameters */
-	u64 values[MAX_COMMAND_PARAMS];
-	for (int i = 1; i < params.size(); i++)
-		if (!m_console.validate_number_parameter(params[i], values[i]))
-			return;
-
 	/* then do a printf */
 	std::ostringstream buffer;
-	if (mini_printf(buffer, params[0], params.size() - 1, &values[1]))
+	if (mini_printf(buffer, params))
 		m_console.get_visible_cpu()->debug()->trace_printf("%s", std::move(buffer).str());
 }
 
@@ -687,7 +721,6 @@ void debugger_commands::execute_tracesym(const std::vector<std::string_view> &pa
 {
 	// build a format string appropriate for the parameters and validate them
 	std::stringstream format;
-	u64 values[MAX_COMMAND_PARAMS];
 	for (int i = 0; i < params.size(); i++)
 	{
 		// find this symbol
@@ -702,15 +735,15 @@ void debugger_commands::execute_tracesym(const std::vector<std::string_view> &pa
 		util::stream_format(format, "%s=%s ",
 			params[i],
 			sym->format().empty() ? "%16X" : sym->format());
-
-		// validate the parameter
-		if (!m_console.validate_number_parameter(params[i], values[i]))
-			return;
 	}
+
+	// build parameters for printf
+	std::vector<std::string_view> printf_params(params);
+	printf_params.insert(printf_params.begin(), format.str());
 
 	// then do a printf
 	std::ostringstream buffer;
-	if (mini_printf(buffer, format.str(), params.size(), values))
+	if (mini_printf(buffer, printf_params))
 		m_console.get_visible_cpu()->debug()->trace_printf("%s", std::move(buffer).str());
 }
 
@@ -2002,8 +2035,9 @@ void debugger_commands::execute_save(int spacenum, const std::vector<std::string
 		for (u64 i = offset; i != endoffset; i++)
 		{
 			offs_t curaddr = i;
-			u64 data = space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr) ?
-				space->read_qword(curaddr) : space->unmap();
+			address_space *tspace;
+			u64 data = space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace) ?
+				tspace->read_qword(curaddr) : space->unmap();
 			fwrite(&data, 8, 1, f);
 		}
 		break;
@@ -2011,8 +2045,9 @@ void debugger_commands::execute_save(int spacenum, const std::vector<std::string
 		for (u64 i = offset; i != endoffset; i++)
 		{
 			offs_t curaddr = i;
-			u32 data = space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr) ?
-				space->read_dword(curaddr) : space->unmap();
+			address_space *tspace;
+			u32 data = space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace) ?
+				tspace->read_dword(curaddr) : space->unmap();
 			fwrite(&data, 4, 1, f);
 		}
 		break;
@@ -2020,8 +2055,9 @@ void debugger_commands::execute_save(int spacenum, const std::vector<std::string
 		for (u64 i = offset; i != endoffset; i++)
 		{
 			offs_t curaddr = i;
-			u16 data = space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr) ?
-				space->read_word(curaddr) : space->unmap();
+			address_space *tspace;
+			u16 data = space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace) ?
+				tspace->read_word(curaddr) : space->unmap();
 			fwrite(&data, 2, 1, f);
 		}
 		break;
@@ -2029,8 +2065,9 @@ void debugger_commands::execute_save(int spacenum, const std::vector<std::string
 		for (u64 i = offset; i != endoffset; i++)
 		{
 			offs_t curaddr = i;
-			u8 data = space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr) ?
-				space->read_byte(curaddr) : space->unmap();
+			address_space *tspace;
+			u8 data = space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace) ?
+				tspace->read_byte(curaddr) : space->unmap();
 			fwrite(&data, 1, 1, f);
 		}
 		break;
@@ -2040,8 +2077,9 @@ void debugger_commands::execute_save(int spacenum, const std::vector<std::string
 		for (u64 i = offset; i != endoffset; i+=16)
 		{
 			offs_t curaddr = i;
-			u16 data = space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr) ?
-				space->read_word(curaddr) : space->unmap();
+			address_space *tspace;
+			u16 data = space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace) ?
+				tspace->read_word(curaddr) : space->unmap();
 			fwrite(&data, 2, 1, f);
 		}
 		break;
@@ -2145,8 +2183,9 @@ void debugger_commands::execute_load(int spacenum, const std::vector<std::string
 			offs_t curaddr = i;
 			u64 data;
 			f.read((char *)&data, 8);
-			if (f && space->device().memory().translate(space->spacenum(), TRANSLATE_WRITE_DEBUG, curaddr))
-				space->write_qword(curaddr, data);
+			address_space *tspace;
+			if (f && space->device().memory().translate(space->spacenum(), device_memory_interface::TR_WRITE, curaddr, tspace))
+				tspace->write_qword(curaddr, data);
 		}
 		break;
 	case -2:
@@ -2155,8 +2194,9 @@ void debugger_commands::execute_load(int spacenum, const std::vector<std::string
 			offs_t curaddr = i;
 			u32 data;
 			f.read((char *)&data, 4);
-			if (f && space->device().memory().translate(space->spacenum(), TRANSLATE_WRITE_DEBUG, curaddr))
-				space->write_dword(curaddr, data);
+			address_space *tspace;
+			if (f && space->device().memory().translate(space->spacenum(), device_memory_interface::TR_WRITE, curaddr, tspace))
+				tspace->write_dword(curaddr, data);
 		}
 		break;
 	case -1:
@@ -2165,8 +2205,9 @@ void debugger_commands::execute_load(int spacenum, const std::vector<std::string
 			offs_t curaddr = i;
 			u16 data;
 			f.read((char *)&data, 2);
-			if (f && space->device().memory().translate(space->spacenum(), TRANSLATE_WRITE_DEBUG, curaddr))
-				space->write_word(curaddr, data);
+			address_space *tspace;
+			if (f && space->device().memory().translate(space->spacenum(), device_memory_interface::TR_WRITE, curaddr, tspace))
+				tspace->write_word(curaddr, data);
 		}
 		break;
 	case  0:
@@ -2175,8 +2216,9 @@ void debugger_commands::execute_load(int spacenum, const std::vector<std::string
 			offs_t curaddr = i;
 			u8 data;
 			f.read((char *)&data, 1);
-			if (f && space->device().memory().translate(space->spacenum(), TRANSLATE_WRITE_DEBUG, curaddr))
-				space->write_byte(curaddr, data);
+			address_space *tspace;
+			if (f && space->device().memory().translate(space->spacenum(), device_memory_interface::TR_WRITE, curaddr, tspace))
+				tspace->write_byte(curaddr, data);
 		}
 		break;
 	case  3:
@@ -2187,8 +2229,9 @@ void debugger_commands::execute_load(int spacenum, const std::vector<std::string
 			offs_t curaddr = i;
 			u16 data;
 			f.read((char *)&data, 2);
-			if (f && space->device().memory().translate(space->spacenum(), TRANSLATE_WRITE_DEBUG, curaddr))
-				space->write_word(curaddr, data);
+			address_space *tspace;
+			if (f && space->device().memory().translate(space->spacenum(), device_memory_interface::TR_WRITE, curaddr, tspace))
+				tspace->write_word(curaddr, data);
 		}
 		break;
 	}
@@ -2338,21 +2381,22 @@ void debugger_commands::execute_dump(int spacenum, const std::vector<std::string
 			if (i + j <= endoffset)
 			{
 				offs_t curaddr = i + j;
-				if (space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr))
+				address_space *tspace;
+				if (space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace))
 				{
 					switch (width)
 					{
 					case 8:
-						util::stream_format(output, " %016X", space->read_qword_unaligned(i+j));
+						util::stream_format(output, " %016X", tspace->read_qword_unaligned(i+j));
 						break;
 					case 4:
-						util::stream_format(output, " %08X", space->read_dword_unaligned(i+j));
+						util::stream_format(output, " %08X", tspace->read_dword_unaligned(i+j));
 						break;
 					case 2:
-						util::stream_format(output, " %04X", space->read_word_unaligned(i+j));
+						util::stream_format(output, " %04X", tspace->read_word_unaligned(i+j));
 						break;
 					case 1:
-						util::stream_format(output, " %02X", space->read_byte(i+j));
+						util::stream_format(output, " %02X", tspace->read_byte(i+j));
 						break;
 					}
 				}
@@ -2372,22 +2416,23 @@ void debugger_commands::execute_dump(int spacenum, const std::vector<std::string
 			for (u64 j = 0; j < rowsize && (i + j) <= endoffset; j += delta)
 			{
 				offs_t curaddr = i + j;
-				if (space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr))
+				address_space *tspace;
+				if (space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace))
 				{
 					u64 data = 0;
 					switch (width)
 					{
 					case 8:
-						data = space->read_qword_unaligned(i+j);
+						data = tspace->read_qword_unaligned(i+j);
 						break;
 					case 4:
-						data = space->read_dword_unaligned(i+j);
+						data = tspace->read_dword_unaligned(i+j);
 						break;
 					case 2:
-						data = space->read_word_unaligned(i+j);
+						data = tspace->read_word_unaligned(i+j);
 						break;
 					case 1:
-						data = space->read_byte(i+j);
+						data = tspace->read_byte(i+j);
 						break;
 					}
 					for (unsigned int b = 0; b != width; b++) {
@@ -2483,28 +2528,29 @@ void debugger_commands::execute_strdump(int spacenum, const std::vector<std::str
 		// get the character data
 		u64 data = 0;
 		offs_t curaddr = offset;
-		if (space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, curaddr))
+		address_space *tspace;
+		if (space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, curaddr, tspace))
 		{
 			switch (width)
 			{
 			case 1:
-				data = space->read_byte(curaddr);
+				data = tspace->read_byte(curaddr);
 				break;
 
 			case 2:
-				data = space->read_word(curaddr);
+				data = tspace->read_word(curaddr);
 				if (be)
 					data = swapendian_int16(data);
 				break;
 
 			case 4:
-				data = space->read_dword(curaddr);
+				data = tspace->read_dword(curaddr);
 				if (be)
 					data = swapendian_int32(data);
 				break;
 
 			case 8:
-				data = space->read_qword(curaddr);
+				data = tspace->read_qword(curaddr);
 				if (be)
 					data = swapendian_int64(data);
 				break;
@@ -3158,36 +3204,37 @@ void debugger_commands::execute_find(int spacenum, const std::vector<std::string
 		for (int j = 0; j < data_count && match; j++)
 		{
 			offs_t address = space->byte_to_address(i + suboffset);
+			address_space *tspace;
 			switch (data_size[j])
 			{
 			case 1:
 				address &= space->logaddrmask();
-				if (memory.translate(space->spacenum(), TRANSLATE_READ_DEBUG, address))
-					match = space->read_byte(address) == u8(data_to_find[j]);
+				if (memory.translate(space->spacenum(), device_memory_interface::TR_READ, address, tspace))
+					match = tspace->read_byte(address) == u8(data_to_find[j]);
 				else
 					match = false;
 				break;
 
 			case 2:
 				address &= space->logaddrmask();
-				if (memory.translate(space->spacenum(), TRANSLATE_READ_DEBUG, address))
-					match = space->read_word_unaligned(address) == u16(data_to_find[j]);
+				if (memory.translate(space->spacenum(), device_memory_interface::TR_READ, address, tspace))
+					match = tspace->read_word_unaligned(address) == u16(data_to_find[j]);
 				else
 					match = false;
 				break;
 
 			case 4:
 				address &= space->logaddrmask();
-				if (memory.translate(space->spacenum(), TRANSLATE_READ_DEBUG, address))
-					match = space->read_dword_unaligned(address) == u32(data_to_find[j]);
+				if (memory.translate(space->spacenum(), device_memory_interface::TR_READ, address, tspace))
+					match = tspace->read_dword_unaligned(address) == u32(data_to_find[j]);
 				else
 					match = false;
 				break;
 
 			case 8:
 				address &= space->logaddrmask();
-				if (memory.translate(space->spacenum(), TRANSLATE_READ_DEBUG, address))
-					match = space->read_qword_unaligned(address) == u64(data_to_find[j]);
+				if (memory.translate(space->spacenum(), device_memory_interface::TR_READ, address, tspace))
+					match = tspace->read_qword_unaligned(address) == u64(data_to_find[j]);
 				else
 					match = false;
 				break;
@@ -3284,7 +3331,8 @@ void debugger_commands::execute_fill(int spacenum, const std::vector<std::string
 		for (int j = 0; j < data_count; j++)
 		{
 			offs_t address = space->byte_to_address(offset) & space->logaddrmask();
-			if (!memory.translate(space->spacenum(), TRANSLATE_WRITE_DEBUG, address))
+			address_space *tspace;
+			if (!memory.translate(space->spacenum(), device_memory_interface::TR_WRITE, address, tspace))
 			{
 				m_console.printf("Fill aborted due to page fault at %0*X\n", space->logaddrchars(), space->byte_to_address(offset) & space->logaddrmask());
 				length = 0;
@@ -3293,19 +3341,19 @@ void debugger_commands::execute_fill(int spacenum, const std::vector<std::string
 			switch (fill_data_size[j])
 			{
 			case 1:
-				space->write_byte(address, fill_data[j]);
+				tspace->write_byte(address, fill_data[j]);
 				break;
 
 			case 2:
-				space->write_word_unaligned(address, fill_data[j]);
+				tspace->write_word_unaligned(address, fill_data[j]);
 				break;
 
 			case 4:
-				space->write_dword_unaligned(address, fill_data[j]);
+				tspace->write_dword_unaligned(address, fill_data[j]);
 				break;
 
 			case 8:
-				space->read_qword_unaligned(address, fill_data[j]);
+				tspace->read_qword_unaligned(address, fill_data[j]);
 				break;
 			}
 			offset += fill_data_size[j];
@@ -3534,13 +3582,13 @@ void debugger_commands::execute_history(const std::vector<std::string_view> &par
 	}
 
 	// loop over lines
-	debug_disasm_buffer buffer(*device);
 	std::string instruction;
 	for (int index = int(unsigned(count)); index > 0; index--)
 	{
 		auto const pc = debug->history_pc(1 - index);
 		if (pc.second)
 		{
+			debug_disasm_buffer buffer(*device);
 			offs_t next_offset;
 			offs_t size;
 			u32 info;
@@ -3654,7 +3702,8 @@ void debugger_commands::execute_pcatmem(int spacenum, const std::vector<std::str
 
 	// Translate the address
 	offs_t a = address & space->logaddrmask();
-	if (!space->device().memory().translate(space->spacenum(), TRANSLATE_READ_DEBUG, a))
+	address_space *tspace;
+	if (!space->device().memory().translate(space->spacenum(), device_memory_interface::TR_READ, a, tspace))
 	{
 		m_console.printf("Address translation failed\n");
 		return;
@@ -3666,19 +3715,19 @@ void debugger_commands::execute_pcatmem(int spacenum, const std::vector<std::str
 	switch (space->data_width())
 	{
 	case 8:
-		data = space->read_byte(a);
+		data = tspace->read_byte(a);
 		break;
 
 	case 16:
-		data = space->read_word_unaligned(a);
+		data = tspace->read_word_unaligned(a);
 		break;
 
 	case 32:
-		data = space->read_dword_unaligned(a);
+		data = tspace->read_dword_unaligned(a);
 		break;
 
 	case 64:
-		data = space->read_qword_unaligned(a);
+		data = tspace->read_qword_unaligned(a);
 		break;
 	}
 
@@ -3760,20 +3809,22 @@ void debugger_commands::execute_map(int spacenum, const std::vector<std::string_
 	address_space *space;
 	if (!m_console.validate_target_address_parameter(params[0], spacenum, space, address))
 		return;
+	address &= space->logaddrmask();
 
 	// do the translation first
-	for (int intention = TRANSLATE_READ_DEBUG; intention <= TRANSLATE_FETCH_DEBUG; intention++)
+	for (int intention = device_memory_interface::TR_READ; intention <= device_memory_interface::TR_FETCH; intention++)
 	{
 		static const char *const intnames[] = { "Read", "Write", "Fetch" };
-		offs_t taddress = address & space->addrmask();
-		if (space->device().memory().translate(space->spacenum(), intention, taddress))
+		offs_t taddress = address;
+		address_space *tspace;
+		if (space->device().memory().translate(space->spacenum(), intention, taddress, tspace))
 		{
-			std::string mapname = space->get_handler_string((intention == TRANSLATE_WRITE_DEBUG) ? read_or_write::WRITE : read_or_write::READ, taddress);
+			std::string mapname = tspace->get_handler_string((intention == device_memory_interface::TR_WRITE) ? read_or_write::WRITE : read_or_write::READ, taddress);
 			m_console.printf(
-					"%7s: %0*X logical == %0*X physical -> %s\n",
+					"%7s: %0*X logical %s == %0*X physical %s -> %s\n",
 					intnames[intention & 3],
-					space->logaddrchars(), address,
-					space->addrchars(), taddress,
+					space->logaddrchars(), address, space->name(),
+					tspace->addrchars(), taddress, tspace->name(),
 					mapname);
 		}
 		else
@@ -3971,10 +4022,19 @@ void debugger_commands::execute_mount(const std::vector<std::string_view> &param
 	{
 		if ((img.instance_name() == params[0]) || (img.brief_instance_name() == params[0]))
 		{
-			if (img.load(params[1]) != image_init_result::PASS)
-				m_console.printf("Unable to mount file %s on %s\n", params[1], params[0]);
-			else
+			auto [err, msg] = img.load(params[1]);
+			if (!err)
+			{
 				m_console.printf("File %s mounted on %s\n", params[1], params[0]);
+			}
+			else
+			{
+				m_console.printf(
+						"Unable to mount file %s on %s: %s\n",
+						params[1],
+						params[0],
+						!msg.empty() ? msg : err.message());
+			}
 			return;
 		}
 	}

@@ -44,7 +44,7 @@ Interrupt frequency on audio CPU is not a periodical signal, but there are a lot
 
 
 // configurable logging
-#define LOG_UNKWRITE     (1U <<  1)
+#define LOG_UNKWRITE     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_UNKWRITE)
 
@@ -113,8 +113,6 @@ private:
 	void sound_cpu_map(address_map &map);
 };
 
-
-// video
 
 TILE_GET_INFO_MEMBER(speedbal_state::get_tile_info_bg)
 {
@@ -234,8 +232,6 @@ uint32_t speedbal_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 void speedbal_state::machine_start()
 {

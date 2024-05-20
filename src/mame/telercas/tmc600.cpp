@@ -48,6 +48,16 @@ Notes:
     CDP1870 - RCA CDP1870CE Video Interface System (VIS) Color Video (DOT XTAL at 5.6260MHz, CHROM XTAL at 8.867238MHz)
     CN1     - RF connector [TMC-700]
     CN2     - 10x2 pin printer connector [TMC-700]
+                    GND   1  2  D0
+                    GND   3  4  D1
+                    GND   5  6  D2
+                    GND   7  8  D3
+                    GND   9 10  D4
+                    GND  11 12  D5
+                    GND  13 14  D6
+                    GND  15 16  D7
+                    GND  17 18  BUSY
+                    GND  19 20  _STROBE
     CN3     - 32x3 pin EURO connector
     CN4     - DIN5D tape connector
                 1   input (500 mV / 47 Kohm)
@@ -197,9 +207,9 @@ static INPUT_PORTS_START( tmc600 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('X')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('Y')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x85") PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR(0x00C5)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x84") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0x00C4)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x96") PORT_CODE(KEYCODE_COLON) PORT_CHAR(0x00D6)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR(U'Å')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(U'Ä')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(U'Ö')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('^')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("BREAK") PORT_CODE(KEYCODE_END) PORT_CHAR(UCHAR_MAMEKEY(END),3)
 
@@ -229,17 +239,17 @@ INPUT_PORTS_END
 
 /* CDP1802 Interface */
 
-READ_LINE_MEMBER( tmc600_state::ef2_r )
+int tmc600_state::ef2_r()
 {
 	return m_cassette->input() < 0;
 }
 
-READ_LINE_MEMBER( tmc600_state::ef3_r )
+int tmc600_state::ef3_r()
 {
 	return !BIT(m_key_row[(m_out3 >> 3) & 0x07]->read(), m_out3 & 0x07);
 }
 
-WRITE_LINE_MEMBER( tmc600_state::q_w )
+void tmc600_state::q_w(int state)
 {
 	m_cassette->output(state ? +1.0 : -1.0);
 }
@@ -254,6 +264,31 @@ void tmc600_state::sc_w(uint8_t data)
 void tmc600_state::out3_w(uint8_t data)
 {
 	m_out3 = data;
+}
+
+QUICKLOAD_LOAD_MEMBER(tmc600_state::quickload_cb)
+{
+	int size = image.length();
+
+	if (size < 16)
+		return std::make_pair(image_error::INVALIDLENGTH, "Image is too short");
+
+	if ((size - 16) > (m_ram->size() - 0x300))
+		return std::make_pair(image_error::INVALIDLENGTH, "Image is larger than RAM");
+
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+
+	image.fseek(0x5, SEEK_SET);
+	image.fread(program.get_write_ptr(0x6181), 4); // DEFUS and EOP
+	image.fread(program.get_write_ptr(0x6192), 4); // STRING and ARRAY
+	
+	image.fseek(0x9, SEEK_SET);
+	image.fread(program.get_write_ptr(0x6199), 2); // EOD
+
+	image.fseek(0xf, SEEK_SET);
+	image.fread(program.get_write_ptr(0x6300), size); // program
+
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 /* Machine Drivers */
@@ -280,11 +315,9 @@ void tmc600_state::tmc600(machine_config &config)
 	m_bwio->mode_cb().set_constant(1);
 	m_bwio->do_cb().set(FUNC(tmc600_state::out3_w));
 
-#if 0
 	// address bus demux for expansion bus
 	cdp1852_device &demux(CDP1852(config, CDP1852_BUS_TAG)); // clock is expansion bus TPA
 	demux.mode_cb().set_constant(0);
-#endif
 
 	// printer output latch
 	cdp1852_device &prtout(CDP1852(config, CDP1852_TMC700_TAG)); // clock is CDP1802 TPB
@@ -299,11 +332,19 @@ void tmc600_state::tmc600(machine_config &config)
 	CASSETTE(config, m_cassette);
 	m_cassette->set_default_state(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED);
 
+	// quickload
+	quickload_image_device &quickload(QUICKLOAD(config, "quickload", "tmc600"));
+	quickload.set_load_callback(FUNC(tmc600_state::quickload_cb));
+	quickload.set_interface("tmc600_quik");
+
 	// expansion bus connector
 	TMC600_EUROBUS_SLOT(config, m_bus, tmc600_eurobus_cards, nullptr);
 
 	// internal RAM
 	RAM(config, RAM_TAG).set_default_size("8K");
+
+	// software lists
+	SOFTWARE_LIST(config, "quik_list").set_original("tmc600_quik");
 }
 
 /* ROMs */

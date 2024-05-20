@@ -29,7 +29,7 @@
 
 
 // configurable logging
-#define LOG_PALETTEBANK     (1U <<  1)
+#define LOG_PALETTEBANK     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_PALETTEBANK)
 
@@ -149,8 +149,6 @@ private:
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -482,8 +480,6 @@ uint32_t farwest_state::screen_update(screen_device &screen, bitmap_ind16 &bitma
 	return 0;
 }
 
-
-// machine
 
 /*************************************
  *

@@ -12,7 +12,7 @@ TODO:
 */
 
 #include "emu.h"
-#include "video/hlcd0488.h"
+#include "hlcd0488.h"
 
 
 DEFINE_DEVICE_TYPE(HLCD0488, hlcd0488_device, "hlcd0488", "Hughes HLCD 0488 LCD Driver")
@@ -33,7 +33,6 @@ hlcd0488_device::hlcd0488_device(const machine_config &mconfig, const char *tag,
 
 void hlcd0488_device::device_start()
 {
-	m_write_cols.resolve_safe();
 	m_sync_timer = timer_alloc(FUNC(hlcd0488_device::sync_update), this);
 
 	// zerofill
@@ -92,13 +91,13 @@ TIMER_CALLBACK_MEMBER(hlcd0488_device::sync_update)
 	m_data_clk_prev = m_data_clk;
 }
 
-WRITE_LINE_MEMBER(hlcd0488_device::latch_pulse_w)
+void hlcd0488_device::latch_pulse_w(int state)
 {
 	m_latch_pulse = state ? 1 : 0;
 	m_sync_timer->adjust(attotime::zero);
 }
 
-WRITE_LINE_MEMBER(hlcd0488_device::data_clk_w)
+void hlcd0488_device::data_clk_w(int state)
 {
 	m_data_clk = state ? 1 : 0;
 	m_sync_timer->adjust(attotime::zero);

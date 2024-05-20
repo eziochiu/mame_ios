@@ -36,7 +36,7 @@ fi
 if [ "$1" == "ios" ]; then
     shift
     export BUILDDIR=build-ios
-    export ARCHOPTS="-arch arm64 -isysroot `xcodebuild -version -sdk iphoneos Path` -miphoneos-version-min=$VERSION_MIN"
+    export ARCHOPTS="-arch arm64 -isysroot `xcodebuild -version -sdk iphoneos Path` -miphoneos-version-min=$VERSION_MIN -target arm64-apple-ios$VERSION_MIN"
     LIBMAME=libmame-ios
 fi
 
@@ -161,6 +161,11 @@ fi
 
 ## common OPTS
 export ARCHOPTS="$ARCHOPTS -fPIC"
+
+## add -mcrc for arm64
+if [[ $ARCHOPTS == *arm64* ]]; then
+    export ARCHOPTS="$ARCHOPTS -mcrc"
+fi
 
 ## hack to get sqlite to build
 export ARCHOPTS="$ARCHOPTS -DHAVE_GETHOSTUUID=0"

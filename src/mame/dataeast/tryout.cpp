@@ -33,7 +33,7 @@ $208 strikes count
 
 
 // configurable logging
-#define LOG_GFXCTRL (1U <<  1)
+#define LOG_GFXCTRL (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_GFXCTRL)
 
@@ -110,8 +110,6 @@ private:
 	void sound_cpu(address_map &map);
 };
 
-
-// video
 
 void tryout_state::palette(palette_device &palette) const
 {
@@ -351,8 +349,6 @@ uint32_t tryout_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap
 	return 0;
 }
 
-
-// machine
 
 void tryout_state::nmi_ack_w(uint8_t data)
 {

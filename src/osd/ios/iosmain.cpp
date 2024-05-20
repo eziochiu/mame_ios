@@ -17,6 +17,7 @@
 #include "osdepend.h"
 #include "emu.h"
 #include "emuopts.h"
+#include "main.h"
 #include "fileio.h"
 #include "gamedrv.h"
 #include "drivenum.h"
@@ -69,7 +70,7 @@ extern "C" int myosd_main(int argc, char** argv, myosd_callbacks* callbacks, siz
     memset(&host_callbacks, 0, sizeof(host_callbacks));
     memcpy(&host_callbacks, callbacks, MIN(sizeof(host_callbacks), sizeof(myosd_callbacks)));
     
-    if (argc == 0) {
+    if (argc == 0 || argv == NULL) {
         static const char* args[] = {"myosd"};
         argc = 1;
         argv = (char**)args;
@@ -160,7 +161,7 @@ ios_osd_interface::~ios_osd_interface()
 //  output_callback  - callback for osd_printf_...
 //-------------------------------------------------
 
-void ios_osd_interface::output_callback(osd_output_channel channel, const util::format_argument_pack<std::ostream> &args)
+void ios_osd_interface::output_callback(osd_output_channel channel, const util::format_argument_pack<char> &args)
 {
     if (channel == OSD_OUTPUT_CHANNEL_VERBOSE && !m_verbose)
         return;
@@ -208,6 +209,15 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
     char                        name[MAX_DRIVER_NAME_CHARS + 1]; // short name of the game
     */
     
+    //
+    // MAME does not do device types anymore! (MAME 0.252+)
+    //
+    // what we are going to do is assume if a machine has no software list or media then it is an ARCADE
+    // if it has keyboard input then it is a COMPUTER
+    //
+    info->type = MYOSD_GAME_TYPE_ARCADE;
+
+    /*
     int type = (driver->flags & machine_flags::MASK_TYPE);
     
     if (type == MACHINE_TYPE_ARCADE)
@@ -218,6 +228,7 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
         info->type = MYOSD_GAME_TYPE_COMPUTER;
     else
         info->type = MYOSD_GAME_TYPE_OTHER;
+    */
 
     info->source_file  = driver->type.source();
     info->parent       = driver->parent;
@@ -258,7 +269,6 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
     }
     
     // get software lists for this system
-    if (type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_COMPUTER)
     {
         static std::unordered_set<std::string> g_software;
         std::string software;
@@ -279,7 +289,7 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
             if (!img.user_loadable())
                 continue;
 
-            osd_printf_debug("MEDIA: %s[%s]: '%s' (%s)\n", driver->name, img.brief_instance_name(), img.image_type_name(), img.file_extensions());
+            osd_printf_debug("MEDIA: %s[%s]: '%s' (%s)%s\n", driver->name, img.brief_instance_name(), img.image_type_name(), img.file_extensions(), (img.must_be_loaded() ? "*" : ""));
 
             std::string media_type = img.brief_instance_name();
             
@@ -303,8 +313,18 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
             }
         }
 
-        osd_printf_debug("SOFTWARE: '%s'\n", software.c_str());
-        info->software_list = g_software.insert(software).first->c_str();
+        if (software.size() != 0)
+        {
+            osd_printf_debug("SOFTWARE: '%s'\n", software.c_str());
+            info->software_list = g_software.insert(software).first->c_str();
+        }
+    }
+
+    if (info->software_list != NULL && info->software_list[0] != 0) {
+        info->type = MYOSD_GAME_TYPE_CONSOLE;
+        
+        if (false)
+            info->type = MYOSD_GAME_TYPE_COMPUTER;
     }
 }
 
@@ -337,15 +357,11 @@ static std::vector<std::string> get_romless_machines(running_machine &machine)
         {
             game_driver const &driver(driver_list::driver(i));
             machine_config config(driver, machine.options());
-            int type = (driver.flags & machine_flags::MASK_TYPE);
             
             if (&driver == &GAME_NAME(___empty))
                 continue;
             
-            if (!(type == MACHINE_TYPE_CONSOLE || type == MACHINE_TYPE_ARCADE))
-                continue;
-            
-            if (driver.flags & (MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_IS_INCOMPLETE))
+            if (driver.flags & (MACHINE_NOT_WORKING | MACHINE_NO_SOUND | MACHINE_IS_INCOMPLETE | MACHINE_NO_SOUND_HW | MACHINE_MECHANICAL))
                 continue;
             
             int num_roms = 0;
@@ -563,6 +579,9 @@ void osd_setup_osd_specific_emu_options(emu_options &opts)
     opts.add_entries(s_option_entries);
 }
 
+// TODO: the 7z library has changed, this is removed for now.
+#if 0
+
 //============================================================
 //  myosd_enumerate_7z
 //  give the host the ability to enumerate the file names in a 7z file
@@ -579,7 +598,7 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
 {
     CSzArEx db;
     CFileInStream archiveStream;
-    CLookToRead lookStream;
+    CLookToRead2 lookStream;
     ISzAlloc alloc = {SzAlloc, SzFree};
     ISzAlloc alloc_temp = {SzAllocTemp, SzFreeTemp};
     
@@ -587,16 +606,16 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
         return -1;
     
     FileInStream_CreateVTable(&archiveStream);
-    LookToRead_CreateVTable(&lookStream, False);
+    LookToRead2_CreateVTable(&lookStream, False);
     
-    lookStream.realStream = &archiveStream.s;
-    LookToRead_Init(&lookStream);
+    lookStream.realStream = &archiveStream.vt;
+    LookToRead2_INIT(&lookStream);
 
     if (g_CrcTable[1] == 0)
         CrcGenerateTable(); // *YES* this is needed!!
 
     SzArEx_Init(&db);
-    int err = SzArEx_Open(&db, &lookStream.s, &alloc, &alloc_temp);
+    int err = SzArEx_Open(&db, &lookStream.vt, &alloc, &alloc_temp);
     if (err == 0) {
 
         uint32_t blockIndex = 0xFFFFFFFF; /* it can have any value before first call (if outBuffer = 0) */
@@ -619,7 +638,7 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
                 size_t offset = 0;
                 size_t outSizeProcessed = 0;
                 
-                int res = SzArEx_Extract(&db, &lookStream.s, i,
+                int res = SzArEx_Extract(&db, &lookStream.vt, i,
                     &blockIndex, &outBuffer, &outBufferSize,
                     &offset, &outSizeProcessed,
                     &alloc, &alloc_temp);
@@ -639,5 +658,7 @@ extern "C" int myosd_enumerate_7z(const char* path, int load_data_flag, void* ca
     
     return err;
 }
+
+#endif
 
 

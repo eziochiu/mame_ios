@@ -81,7 +81,7 @@ Z80 CPU - 12MHz/2
 
 
 // configurable logging
-#define LOG_MCUSIM     (1U <<  1)
+#define LOG_MCUSIM     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_MCUSIM)
 
@@ -169,8 +169,6 @@ private:
 	TIMER_DEVICE_CALLBACK_MEMBER(mcu_sim);
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -269,8 +267,6 @@ uint32_t gundealr_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 void gundealr_state::bankswitch_w(uint8_t data)
 {

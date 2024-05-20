@@ -5,7 +5,7 @@
 Syusse Oozumou
 (c) 1984 Technos Japan (Licensed by Data East)
 
-Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/10/04
+Driver by Takahiro Nogi 1999/10/04
 
 ***************************************************************************/
 
@@ -85,8 +85,6 @@ private:
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 };
 
-
-// video
 
 /**************************************************************************/
 
@@ -245,8 +243,6 @@ uint32_t ssozumo_state::screen_update(screen_device &screen, bitmap_ind16 &bitma
 	return 0;
 }
 
-
-// machine
 
 void ssozumo_state::machine_start()
 {

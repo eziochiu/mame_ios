@@ -25,51 +25,44 @@
 
 bool windows_osd_interface::should_hide_mouse() const
 {
-	bool hidemouse = false;
-	wininput_module *mod;
+	if (!winwindow_has_focus())
+		return false;
 
-	mod = dynamic_cast<wininput_module *>(m_keyboard_input);
-	if (mod) hidemouse |= mod->should_hide_mouse();
+	if (machine().paused())
+		return false;
 
-	mod = dynamic_cast<wininput_module *>(m_mouse_input);
-	if (mod) hidemouse |= mod->should_hide_mouse();
+	// track if mouse/lightgun is enabled, for mouse hiding purposes
+	bool const mouse_enabled = machine().input().class_enabled(DEVICE_CLASS_MOUSE);
+	bool const lightgun_enabled = machine().input().class_enabled(DEVICE_CLASS_LIGHTGUN);
+	if (!mouse_enabled && !lightgun_enabled)
+		return false;
 
-	mod = dynamic_cast<wininput_module *>(m_lightgun_input);
-	if (mod) hidemouse |= mod->should_hide_mouse();
-
-	mod = dynamic_cast<wininput_module *>(m_joystick_input);
-	if (mod) hidemouse |= mod->should_hide_mouse();
-
-	return hidemouse;
+	return true;
 }
 
-bool windows_osd_interface::handle_input_event(input_event eventid, void *eventdata) const
+bool windows_osd_interface::handle_input_event(input_event eventid, void const *eventdata) const
 {
 	bool handled = false;
 
-	wininput_module *mod;
+	wininput_event_handler *mod;
 
-	mod = dynamic_cast<wininput_module *>(m_keyboard_input);
-	if (mod) handled |= mod->handle_input_event(eventid, eventdata);
+	mod = dynamic_cast<wininput_event_handler *>(m_keyboard_input);
+	if (mod)
+		handled |= mod->handle_input_event(eventid, eventdata);
 
-	mod = dynamic_cast<wininput_module *>(m_mouse_input);
-	if (mod) handled |= mod->handle_input_event(eventid, eventdata);
+	mod = dynamic_cast<wininput_event_handler *>(m_mouse_input);
+	if (mod)
+		handled |= mod->handle_input_event(eventid, eventdata);
 
-	mod = dynamic_cast<wininput_module *>(m_lightgun_input);
-	if (mod) handled |= mod->handle_input_event(eventid, eventdata);
+	mod = dynamic_cast<wininput_event_handler *>(m_lightgun_input);
+	if (mod)
+		handled |= mod->handle_input_event(eventid, eventdata);
 
-	mod = dynamic_cast<wininput_module *>(m_joystick_input);
-	if (mod) handled |= mod->handle_input_event(eventid, eventdata);
+	mod = dynamic_cast<wininput_event_handler *>(m_joystick_input);
+	if (mod)
+		handled |= mod->handle_input_event(eventid, eventdata);
 
 	return handled;
-}
-
-void windows_osd_interface::poll_input(running_machine &machine) const
-{
-	m_keyboard_input->poll_if_necessary(machine);
-	m_mouse_input->poll_if_necessary(machine);
-	m_lightgun_input->poll_if_necessary(machine);
-	m_joystick_input->poll_if_necessary(machine);
 }
 
 //============================================================
@@ -84,9 +77,10 @@ void windows_osd_interface::customize_input_type_list(std::vector<input_type_ent
 		{
 			// disable the config menu if the ALT key is down
 			// (allows ALT-TAB to switch between windows apps)
-			case IPT_UI_CONFIGURE:
+			case IPT_UI_MENU:
 				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_TAB, input_seq::not_code, KEYCODE_LALT, input_seq::not_code, KEYCODE_RALT);
 				break;
+
 			// configurable UI mode switch
 			case IPT_UI_TOGGLE_UI:
 				{
@@ -138,10 +132,15 @@ void windows_osd_interface::customize_input_type_list(std::vector<input_type_ent
 				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, input_seq::not_code, KEYCODE_LALT);
 				break;
 
-			// lctrl-lalt-F5 to toggle post-processing
+			// lalt-F10 to toggle post-processing
 			case IPT_OSD_4:
 				entry.configure_osd("POST_PROCESS", N_p("input-name", "Toggle Post-Processing"));
-				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F5, KEYCODE_LALT, KEYCODE_LCONTROL);
+				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F10, KEYCODE_LALT);
+				break;
+
+			// add a Not LALT condition to the throttle key
+			case IPT_UI_THROTTLE:
+				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F10, input_seq::not_code, KEYCODE_LALT);
 				break;
 
 			// leave everything else alone

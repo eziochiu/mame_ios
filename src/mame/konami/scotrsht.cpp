@@ -99,7 +99,7 @@ private:
 
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
 
-	DECLARE_WRITE_LINE_MEMBER(vblank_irq);
+	void vblank_irq(int state);
 
 	void palette(palette_device &palette) const;
 
@@ -110,8 +110,6 @@ private:
 	void sound_portmap(address_map &map);
 };
 
-
-// video
 
 // Similar to Iron Horse
 void scotrsht_state::palette(palette_device &palette) const
@@ -244,15 +242,13 @@ uint32_t scotrsht_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 }
 
 
-// machine
-
 void scotrsht_state::ctrl_w(uint8_t data)
 {
 	m_irq_enable = data & 0x02;
 	flip_screen_set(data & 0x08);
 }
 
-WRITE_LINE_MEMBER(scotrsht_state::vblank_irq)
+void scotrsht_state::vblank_irq(int state)
 {
 	if (state && m_irq_enable)
 		m_maincpu->set_input_line(0, HOLD_LINE);

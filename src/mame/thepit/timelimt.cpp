@@ -70,8 +70,8 @@ private:
 	tilemap_t *m_bg_tilemap = nullptr;
 	tilemap_t *m_fg_tilemap = nullptr;
 
-	DECLARE_WRITE_LINE_MEMBER(nmi_enable_w);
-	DECLARE_WRITE_LINE_MEMBER(coin_lockout_w);
+	void nmi_enable_w(int state);
+	void coin_lockout_w(int state);
 
 	void videoram_w(offs_t offset, uint8_t data);
 	void bg_videoram_w(offs_t offset, uint8_t data);
@@ -95,8 +95,6 @@ private:
 	void sound_map(address_map &map);
 };
 
-
-// video
 
 
 /***************************************************************************
@@ -254,8 +252,6 @@ uint32_t timelimt_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 }
 
 
-// machine
-
 /***************************************************************************/
 
 void timelimt_state::machine_start()
@@ -267,12 +263,12 @@ void timelimt_state::machine_start()
 	save_item(NAME(m_nmi_enabled));
 }
 
-WRITE_LINE_MEMBER(timelimt_state::nmi_enable_w)
+void timelimt_state::nmi_enable_w(int state)
 {
 	m_nmi_enabled = bool(state);
 }
 
-WRITE_LINE_MEMBER(timelimt_state::coin_lockout_w)
+void timelimt_state::coin_lockout_w(int state)
 {
 	machine().bookkeeping().coin_lockout_w(0, !state);
 }

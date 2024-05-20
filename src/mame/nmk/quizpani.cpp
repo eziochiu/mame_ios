@@ -16,7 +16,7 @@
     CUSTOM: NMK112 (QFP64, near ROMs 31,32,4, M6295 sample ROM banking)
             NMK111 (QFP64, 1x input-related near JAMMA, 2x gfx related near ROMs 11,12,21,22)
             NMK903 (QFP44, x2, near ROMs 11,12,21,22)
-            NMK005 (QFP64, near DIPs, possible MCU?)
+            NMK005 (QFP64, near DIPs, GPIO controller)
 
     ROMs  :
             93094-51.127    27c4002     near 68000
@@ -105,8 +105,6 @@ private:
 };
 
 
-// video
-
 TILEMAP_MAPPER_MEMBER(quizpani_state::bg_scan)
 {
 	// logical (col,row) -> memory offset
@@ -187,8 +185,6 @@ uint32_t quizpani_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 void quizpani_state::program_map(address_map &map)
 {
