@@ -54,6 +54,7 @@ protected:
 	virtual void video_start() override ATTR_COLD;
 	virtual void machine_start() override ATTR_COLD;
 	virtual void machine_reset() override ATTR_COLD;
+	virtual void device_post_load() override ATTR_COLD;
 
 	virtual TIMER_CALLBACK_MEMBER(irq_off) override;
 	TIMER_CALLBACK_MEMBER(irq_frame);
@@ -134,6 +135,17 @@ private:
 		T1_X_OFFSET_H = 0x45,
 		T1_Y_OFFSET_L = 0x46,
 		T1_Y_OFFSET_H = 0x47
+	};
+
+	struct sprite_data
+	{
+		u32 code;
+		u32 color;
+		int flipx;
+		int flipy;
+		s32 destx;
+		s32 desty;
+		u32 pmask;
 	};
 
 	void update_frame_timer();
@@ -222,6 +234,7 @@ private:
 	required_device<ram_device> m_cram;
 	required_device<ram_device> m_sfile;
 	required_device<centronics_device> m_centronics;
+	std::vector<sprite_data> m_sprites_cache;
 
 	required_device_array<ym2149_device, 2> m_ay;
 	u8 m_ay_selected;

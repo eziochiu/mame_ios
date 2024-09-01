@@ -229,11 +229,18 @@ void tsconf_state::machine_reset()
 	m_zctl_di = 0xff;
 	m_ay_selected = 0;
 
+	m_sprites_cache.clear();
 	tsconf_update_bank0();
 	tsconf_update_video_mode();
 
 	m_keyboard->write(0xff);
 	while (m_keyboard->read() != 0) { /* invalidate buffer */ }
+}
+
+void tsconf_state::device_post_load()
+{
+	spectrum_128_state::device_post_load();
+	m_sprites_cache.clear();
 }
 
 INPUT_PORTS_START( tsconf )

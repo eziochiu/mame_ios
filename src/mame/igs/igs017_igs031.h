@@ -23,9 +23,9 @@ public:
 	template <typename T> void set_i8255_tag(T &&tag) { m_i8255.set_tag(std::forward<T>(tag)); }
 	template <typename... T> void set_palette_scramble_cb(T &&... args) { m_palette_scramble_cb.set(std::forward<T>(args)...); }
 
-	void set_text_reverse_bits()
+	void set_text_reverse_bits(bool revbits)
 	{
-		m_revbits = true;
+		m_revbits = revbits;
 	}
 
 	u16 palette_callback_straight(u16 bgr) const;
@@ -57,6 +57,20 @@ public:
 	void nmi_enable_w(u8 data);
 	void irq_enable_w(u8 data);
 	virtual void video_start();
+
+	void lhzb2_decrypt_tiles();
+	void mgcs_decrypt_tiles();
+	void tarzan_decrypt_tiles(int address_xor);
+	void slqz2_decrypt_tiles();
+	void sdwx_gfx_decrypt();
+
+	void mgcs_flip_sprites(size_t max_size);
+	void lhzb2_decrypt_sprites();
+	void tarzan_decrypt_sprites(size_t max_size, size_t flip_size);
+	void spkrform_decrypt_sprites();
+	void starzan_decrypt_sprites(size_t max_size, size_t flip_size);
+	void tjsb_decrypt_sprites();
+
 
 protected:
 	virtual void device_add_mconfig(machine_config &config) override;

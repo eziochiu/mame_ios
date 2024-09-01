@@ -12,11 +12,11 @@ TODO:
 Hardware notes:
 
 Fidelity Sensory Chess Challenger "9" (SC9) overview:
-- 8*(8+1) buttons, 8*8+1 LEDs
-- 36-pin edge connector, assume same as SC12
-- 2KB RAM(TMM2016P), 2*8KB ROM(HN48364P)
+- PCB label: 510-1046C01 2-1-82
 - R6502-13, 1.4MHz from resonator, another pcb with the same resonator was measured 1.49MHz*
-- PCB label 510-1046C01 2-1-82
+- 2KB RAM(TMM2016P), 2*8KB ROM(HN48364P)
+- 36-pin edge connector, assume same as SC12
+- 8*(8+1) buttons, 8*8+1 LEDs
 
 *: 2 other boards were measured 1.60MHz and 1.88MHz(newest serial). Online references
 suggest 3 versions of SC9(C01) total: 1.5MHz, 1.6MHz, and 1.9MHz.
@@ -27,7 +27,7 @@ I/O is via TTL, not further documented here
 The Playmatic S was only released in Germany, it's basically a 'deluxe' version of SC9
 with magnet sensors and came with CB9 and CB16.
 
---------------------------------------------------------------------------------
+================================================================================
 
 Starting with SC9, Fidelity added a cartridge slot to their chess computers, meant for
 extra book opening databases and recorded games.
@@ -215,8 +215,8 @@ static INPUT_PORTS_START( sc9 )
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_4) PORT_CODE(KEYCODE_4_PAD) PORT_NAME("LV / Rook")
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_5_PAD) PORT_NAME("PV / Queen")
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_6_PAD) PORT_NAME("PB / King")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DEL) PORT_NAME("CL")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_NAME("RE")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DEL) PORT_CODE(KEYCODE_BACKSPACE) PORT_NAME("CL")
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_CODE(KEYCODE_N) PORT_NAME("RE")
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sc9c )
