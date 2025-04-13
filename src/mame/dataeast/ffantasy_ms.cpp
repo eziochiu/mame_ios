@@ -93,7 +93,7 @@ public:
 	void secretagm(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -101,7 +101,7 @@ private:
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void ffantasym_map(address_map &map);
+	void ffantasym_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -389,7 +389,7 @@ ROM_END
 } // anonymous namespace
 
 
-GAME( 199?, automatm,  robocop,  ffantasym, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Automat (bootleg of Robocop, Modular System)", MACHINE_IS_SKELETON )
-GAME( 199?, drgninjam, baddudes, ffantasym, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Dragon Ninja (Modular System)",                MACHINE_IS_SKELETON )
-GAME( 199?, ffantasym, hippodrm, ffantasym, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Fighting Fantasy (Modular System)",            MACHINE_IS_SKELETON )
-GAME( 199?, secretagm, secretag, secretagm, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Secret Agent (Modular System)",                MACHINE_IS_SKELETON )
+GAME( 199?, automatm,  robocop,  ffantasym, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Automat (bootleg of Robocop, Modular System)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+GAME( 199?, drgninjam, baddudes, ffantasym, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Dragon Ninja (Modular System)",                MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+GAME( 199?, ffantasym, hippodrm, ffantasym, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Fighting Fantasy (Modular System)",            MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+GAME( 199?, secretagm, secretag, secretagm, ffantasym, ffantasy_ms_state, empty_init, ROT0, "bootleg (Gaelco / Ervisa)", "Secret Agent (Modular System)",                MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

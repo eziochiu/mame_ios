@@ -209,7 +209,7 @@ void rsp_device::set_cop0_reg(int reg, uint32_t data)
 
 void rsp_device::unimplemented_opcode(uint32_t op)
 {
-	if ((machine().debug_flags & DEBUG_FLAG_ENABLED) != 0)
+	if (debugger_enabled())
 	{
 		std::ostringstream string;
 		rsp_disassembler rspd;
@@ -2840,6 +2840,7 @@ void rsp_device::execute_run()
 {
 	if (m_sr & (RSP_STATUS_HALT | RSP_STATUS_BROKE))
 	{
+		debugger_wait_hook();
 		m_ideduct = 0;
 		m_scalar_busy = false;
 		m_vector_busy = false;

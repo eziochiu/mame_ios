@@ -184,6 +184,7 @@ Frequencies: 68k is XTAL_32MHZ/2
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "machine/6850acia.h"
+#include "machine/clock.h"
 #include "machine/gen_latch.h"
 #include "machine/mb3773.h"
 #include "sound/ymopn.h"
@@ -240,8 +241,8 @@ public:
 	void init_twcup94b();
 
 protected:
-	virtual void machine_start() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -287,10 +288,10 @@ private:
 	void screen_vblank(int state);
 
 	void mcu_init();
-	void gstriker_map(address_map &map);
-	void sound_io_map(address_map &map);
-	void sound_map(address_map &map);
-	void twcup94_map(address_map &map);
+	void gstriker_map(address_map &map) ATTR_COLD;
+	void sound_io_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
+	void twcup94_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -691,8 +692,14 @@ void gstriker_state::gstriker(machine_config &config)
 
 	ACIA6850(config, m_acia, 0);
 	m_acia->irq_handler().set_inputline(m_maincpu, M68K_IRQ_2);
-	//m_acia->txd_handler().set("link", FUNC(rs232_port_device::write_txd));
-	//m_acia->rts_handler().set("link", FUNC(rs232_port_device::write_rts));
+	m_acia->txd_handler().set(m_acia, FUNC(acia6850_device::write_rxd)); // loopback for now
+
+	// DE-9 port
+	// slave sends 0xca, master receives it and sends a 0x0d ACK back.
+	// writing latter to $200063 while in slave mode will pass the serial check
+	clock_device &acia_clock(CLOCK(config, "acia_clock", 20_MHz_XTAL / 64)); // assume ~19200 baud
+	acia_clock.signal_handler().set(m_acia, FUNC(acia6850_device::write_txc));
+	acia_clock.signal_handler().append(m_acia, FUNC(acia6850_device::write_rxc));
 }
 
 void gstriker_state::twc94(machine_config &config)

@@ -31,8 +31,8 @@
     Game options cannot be adjusted, any attempt to do so resets the machine (seen on real hardware)
     Volume control cycles in the 'Stereo' test, but cannot be tested.
 
-
     This should be similar hardware for Street Viper if we get a dump.
+
 ***************************************************************************/
 
 
@@ -89,15 +89,15 @@ public:
 	void revlatns(machine_config &config);
 	void base(machine_config &config);
 	void cops(machine_config &config);
-	void cops_map(address_map &map);
-	void revlatns_map(address_map &map);
+	void cops_map(address_map &map) ATTR_COLD;
+	void revlatns_map(address_map &map) ATTR_COLD;
 
 	void init_cops();
 
 protected:
 	// driver_device overrides
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	// screen updates

@@ -16,8 +16,6 @@
 //#define VERBOSE (LOG_INT)
 #include "logmacro.h"
 
-#define LOGINT(...)   LOGMASKED(LOG_INT,   __VA_ARGS__)
-
 
 // device type definition
 DEFINE_DEVICE_TYPE(NSC800, nsc800_device, "nsc800", "National Semiconductor NSC800")
@@ -49,8 +47,7 @@ void nsc800_device::device_reset()
 //-------------------------------------------------
 //  execute
 //-------------------------------------------------
-
-void nsc800_device::do_op()
+void nsc800_device::execute_run()
 {
 	#include "cpu/z80/ncs800.hxx"
 }

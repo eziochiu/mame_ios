@@ -39,7 +39,6 @@
 
 #include "cpu/m68000/m68000.h"
 #include "machine/nvram.h"
-#include "machine/amigafdc.h"
 #include "sound/es5503.h"
 #include "speaker.h"
 
@@ -65,10 +64,10 @@ private:
 	uint16_t coin_chip_r(offs_t offset, uint16_t mem_mask = ~0);
 	void coin_chip_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 
-	void a500_mem(address_map &map);
-	void main_map(address_map &map);
-	void mquake_es5503_map(address_map &map);
-	void overlay_512kb_map(address_map &map);
+	void a500_mem(address_map &map) ATTR_COLD;
+	void main_map(address_map &map) ATTR_COLD;
+	void mquake_es5503_map(address_map &map) ATTR_COLD;
+	void overlay_512kb_map(address_map &map) ATTR_COLD;
 
 	required_device<es5503_device> m_es5503;
 	required_region_ptr<uint8_t> m_es5503_rom;
@@ -176,11 +175,11 @@ static INPUT_PORTS_START( mquake )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)         /* JS1SW */
 
 	PORT_START("joy_0_dat")
-	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(mquake_state, amiga_joystick_convert<0>)
+	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(mquake_state::amiga_joystick_convert<0>))
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START("joy_1_dat")
-	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(mquake_state, amiga_joystick_convert<1>)
+	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(mquake_state::amiga_joystick_convert<1>))
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START("p1_joy")
@@ -325,7 +324,7 @@ void mquake_state::mquake(machine_config &config)
 	ADDRESS_MAP_BANK(config, m_overlay).set_map(&mquake_state::overlay_512kb_map).set_options(ENDIANNESS_BIG, 16, 22, 0x200000);
 	ADDRESS_MAP_BANK(config, m_chipset).set_map(&mquake_state::ocs_map).set_options(ENDIANNESS_BIG, 16, 9, 0x200);
 
-	AMIGA_COPPER(config, m_copper, amiga_state::CLK_7M_NTSC);
+	AGNUS_COPPER(config, m_copper, amiga_state::CLK_7M_NTSC);
 	m_copper->set_host_cpu_tag(m_maincpu);
 	m_copper->mem_read_cb().set(FUNC(amiga_state::chip_ram_r));
 	m_copper->set_ecs_mode(false);
@@ -366,7 +365,7 @@ void mquake_state::mquake(machine_config &config)
 	m_cia_1->irq_wr_callback().set(FUNC(amiga_state::cia_1_irq));
 
 	/* fdc */
-	AMIGA_FDC(config, m_fdc, amiga_state::CLK_7M_NTSC);
+	PAULA_FDC(config, m_fdc, amiga_state::CLK_7M_NTSC);
 	m_fdc->index_callback().set("cia_1", FUNC(mos8520_device::flag_w));
 	m_fdc->read_dma_callback().set(FUNC(amiga_state::chip_ram_r));
 	m_fdc->write_dma_callback().set(FUNC(amiga_state::chip_ram_w));

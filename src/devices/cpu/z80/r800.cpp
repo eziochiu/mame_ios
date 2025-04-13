@@ -26,7 +26,6 @@ TODO:
 //#define VERBOSE (LOG_INT)
 #include "logmacro.h"
 
-#define LOGINT(...)   LOGMASKED(LOG_INT,   __VA_ARGS__)
 
 //**************************************************************************
 //  GLOBAL VARIABLES
@@ -98,7 +97,7 @@ void r800_device::muluw(u16 value)
 	set_f((F & (HF|NF)) | z | c);
 }
 
-void r800_device::do_op()
+void r800_device::execute_run()
 {
 	#include "cpu/z80/r800.hxx"
 }

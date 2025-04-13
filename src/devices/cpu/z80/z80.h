@@ -43,6 +43,10 @@ public:
 	auto halt_cb() { return m_halt_cb.bind(); }
 	auto busack_cb() { return m_busack_cb.bind(); }
 
+	// output pins state
+	int halt_r() { return m_halt; }
+	int busack_r() { return m_busack_state; }
+
 protected:
 	z80_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock);
 
@@ -53,9 +57,8 @@ protected:
 
 	// device_execute_interface implementation
 	virtual bool cpu_is_interruptible() const override { return true; }
-	virtual u32 execute_min_cycles() const noexcept override { return 2; }
+	virtual u32 execute_min_cycles() const noexcept override { return 1; }
 	virtual u32 execute_max_cycles() const noexcept override { return 16; }
-	virtual u32 execute_input_lines() const noexcept override { return 4; }
 	virtual u32 execute_default_irq_vector(int inputnum) const noexcept override { return 0xff; }
 	virtual bool execute_input_edge_triggered(int inputnum) const noexcept override { return inputnum == INPUT_LINE_NMI; }
 	virtual void execute_run() override;
@@ -63,7 +66,6 @@ protected:
 
 	// device_memory_interface implementation
 	virtual space_config_vector memory_space_config() const override;
-	virtual u32 translate_memory_address(u16 address) { return address; }
 
 	// device_state_interface implementation
 	virtual void state_import(const device_state_entry &entry) override;
@@ -112,10 +114,10 @@ protected:
 	void set_f(u8 f);
 	void block_io_interrupted_flags();
 
-	virtual void do_op();
-
 	virtual u8 data_read(u16 addr);
 	virtual void data_write(u16 addr, u8 value);
+	virtual u8 stack_read(u16 addr) { return data_read(addr); }
+	virtual void stack_write(u16 addr, u8 value) { return data_write(addr, value); }
 	virtual u8 opcode_read();
 	virtual u8 arg_read();
 

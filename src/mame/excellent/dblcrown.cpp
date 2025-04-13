@@ -5,8 +5,8 @@
 Double Crown (c) 1997 Cadence Technology / Dyna
 
 TODO:
-- Bogus "Hole" in main screen display;
 - Is the background pen really black?
+- Pinpoint optional hopper line_r hookup, via dip4:8.
 - Lots of unmapped I/Os (game doesn't make much use of the HW);
 - video / irq timings;
 
@@ -47,6 +47,7 @@ and for nvram functions.
 #include "machine/bankdev.h"
 #include "machine/i8255.h"
 #include "machine/nvram.h"
+#include "machine/ticket.h"
 #include "machine/timer.h"
 #include "machine/watchdog.h"
 #include "sound/ay8910.h"
@@ -68,6 +69,7 @@ public:
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
 		, m_watchdog(*this, "watchdog")
+		, m_hopper(*this, "hopper")
 		, m_vram(*this, "vram")
 		, m_vram_bank(*this, "vram_bank%u", 0U)
 		, m_gfxdecode(*this, "gfxdecode")
@@ -79,13 +81,14 @@ public:
 	void dblcrown(machine_config &config);
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_device<watchdog_timer_device> m_watchdog;
+	required_device<ticket_dispenser_device> m_hopper;
 	required_shared_ptr<u8> m_vram;
 	required_device_array<address_map_bank_device, 2> m_vram_bank;
 	required_device<gfxdecode_device> m_gfxdecode;
@@ -111,9 +114,9 @@ private:
 
 	TIMER_DEVICE_CALLBACK_MEMBER(scanline_cb);
 
-	void main_map(address_map &map);
-	void main_io(address_map &map);
-	void vram_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
+	void main_io(address_map &map) ATTR_COLD;
+	void vram_map(address_map &map) ATTR_COLD;
 
 	uint8_t m_bank = 0;
 	uint8_t m_irq_src = 0;
@@ -274,7 +277,7 @@ uint8_t dblcrown_state::key_pending_r()
 
 /*  bits
  * 7654 3210
- * ---- -x--  unknown (active after deal)
+ * ---- -x--  coin lockout
  * ---- x---  Payout counter pulse
  * ---x ----  Coin In counter pulse
  * -x-- ----  unknown (active after deal)
@@ -282,9 +285,9 @@ uint8_t dblcrown_state::key_pending_r()
  */
 void dblcrown_state::output_w(uint8_t data)
 {
-	machine().bookkeeping().coin_counter_w(0, BIT(data, 4));  /* Coin In counter pulse */
-	// TODO: should be hopper motor_w
-	machine().bookkeeping().coin_counter_w(1, BIT(data, 3));  /* Payout counter pulse */
+	machine().bookkeeping().coin_counter_w(0, BIT(data, 4));
+	m_hopper->motor_w(BIT(data, 3));
+	machine().bookkeeping().coin_lockout_global_w(!BIT(data, 2));
 }
 
 /*  bits
@@ -368,7 +371,7 @@ static INPUT_PORTS_START( dblcrown )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_GAMBLE_HIGH ) PORT_NAME("Big")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_GAMBLE_LOW ) PORT_NAME("Small")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_GAMBLE_TAKE )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_GAMBLE_KEYOUT ) PORT_NAME("Payout")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_GAMBLE_PAYOUT )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN2")
@@ -492,26 +495,16 @@ static INPUT_PORTS_START( dblcrown )
 	PORT_DIPSETTING(    0x20, "1 Coin/50 Credits" )
 	PORT_DIPSETTING(    0x10, "1 Coin/100 Credits" )
 	PORT_DIPSETTING(    0x00, "1 Coin/500 Credits" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	// TODO: game will error blink if On at payout time
+	PORT_DIPNAME( 0x80, 0x80, "Hopper Status?" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static const gfx_layout char_16x16_layout =
-{
-	16,16,
-	RGN_FRAC(1,1),
-	4,
-	{ 0,1,2,3 },
-	{ 4,0, 12,8, 20,16, 28,24, 36,32, 44,40, 52,48, 60,56 },
-	{ STEP16(0,8*8) },
-	8*8*16
-};
-
 
 static GFXDECODE_START( gfx_dblcrown )
-	GFXDECODE_ENTRY( "gfx1", 0, char_16x16_layout, 0, 0x10 )
-	GFXDECODE_ENTRY( nullptr, 0, gfx_8x8x4_packed_lsb, 0, 0x10 )
+	GFXDECODE_ENTRY( "gfx1", 0, gfx_16x16x4_packed_lsb, 0, 0x10 )
+	GFXDECODE_RAM( nullptr, 0, gfx_8x8x4_packed_lsb, 0, 0x10 )
 GFXDECODE_END
 
 
@@ -583,6 +576,8 @@ void dblcrown_state::dblcrown(machine_config &config)
 
 	// 1000 ms. (minimal of MAX693A watchdog long timeout period with internal oscillator)
 	WATCHDOG_TIMER(config, m_watchdog).set_time(attotime::from_msec(1000));
+
+	HOPPER(config, m_hopper, attotime::from_msec(50));
 
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 

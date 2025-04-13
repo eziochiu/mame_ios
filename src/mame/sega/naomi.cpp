@@ -78,8 +78,8 @@ EPF8452AQC160-3 - Altera FLEX EPF8452AQC160-3 FPGA (QFP160)
          ADM485 - Analog Devices ADM485 +5 V Low Power EIA RS-485 Transceiver (SOIC8)
         PCM1725 - Burr-Brown PCM1725 Stereo Audio Digital to Analog Converter 16 Bits, 96kHz Sampling (SOIC14)
             JP1 - AICA sound block Master Clock source: 2-3 - onboard OSC1 33.8688MHz (default), 1-2 - cart/DIMM connector CN2 pin A48 (alt setting, not used at practice, there is no known devices which provide external AICA clock).
-			JP2 - (not mounted) Fan check: 1-2 - hold reset if fan not working (default), 2-3 - disabled.
-			JP3 - (not mounted) 315-6146 to Maple port 0 comms: 2-3 - enabled (default), 1-2 - disabled.
+            JP2 - (not mounted) Fan check: 1-2 - hold reset if fan not working (default), 2-3 - disabled.
+            JP3 - (not mounted) 315-6146 to Maple port 0 comms: 2-3 - enabled (default), 1-2 - disabled.
             JP4 - Ext.NMI from CN1 A3 goes to: 2-3 - SH-4 NMI (default), 1-2 - SH-4 TCLK.
         CN1/2/3 - Connectors for ROM cart or GDROM DIMM Unit
         CN25/26 - Connectors for Filter Board
@@ -1477,9 +1477,9 @@ void dc_state::aica_map(address_map &map)
 
 static INPUT_PORTS_START( naomi_mie )
 	PORT_START("MIE.3")
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("mie_eeprom", eeprom_serial_93cxx_device, di_write)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("mie_eeprom", eeprom_serial_93cxx_device, cs_write)
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("mie_eeprom", eeprom_serial_93cxx_device, clk_write)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("mie_eeprom", FUNC(eeprom_serial_93cxx_device::di_write))
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("mie_eeprom", FUNC(eeprom_serial_93cxx_device::cs_write))
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OUTPUT ) PORT_WRITE_LINE_DEVICE_MEMBER("mie_eeprom", FUNC(eeprom_serial_93cxx_device::clk_write))
 
 	PORT_START("MIE.5")
 	PORT_DIPNAME( 0x01, 0x00, "Monitor" ) PORT_DIPLOCATION("SW1:1")
@@ -1498,7 +1498,7 @@ static INPUT_PORTS_START( naomi_mie )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	// TODO: truly another service button or just left-over?
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("mie_eeprom", eeprom_serial_93cxx_device, do_read)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("mie_eeprom", FUNC(eeprom_serial_93cxx_device::do_read))
 INPUT_PORTS_END
 
 /* 2 players with 1 joystick and 6 buttons each */
@@ -1977,7 +1977,7 @@ INPUT_CHANGED_MEMBER(naomi_state::naomi_mp_w)
 	m_mp_mux = newval;
 }
 
-CUSTOM_INPUT_MEMBER(naomi_state::naomi_mp_r)
+ioport_value naomi_state::naomi_mp_r()
 {
 	uint8_t retval = 0;
 
@@ -1994,10 +1994,10 @@ static INPUT_PORTS_START( naomi_mp )
 	PORT_INCLUDE( naomi_mie )
 
 	PORT_START("OUTPUT")
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_OUTPUT) PORT_CHANGED_MEMBER(DEVICE_SELF, naomi_state,naomi_mp_w, 0)
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_OUTPUT) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(naomi_state::naomi_mp_w), 0)
 
 	PORT_START("P1")
-	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(naomi_state, naomi_mp_r)
+	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(naomi_state::naomi_mp_r))
 	PORT_BIT( 0x00ff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("KEY1")
@@ -2047,7 +2047,7 @@ static INPUT_PORTS_START( naomi_mp )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_MAHJONG_D )
 INPUT_PORTS_END
 
-CUSTOM_INPUT_MEMBER(naomi_state::suchie3_mp_r)
+ioport_value naomi_state::suchie3_mp_r()
 {
 	uint8_t retval = 0;
 
@@ -2072,10 +2072,10 @@ CUSTOM_INPUT_MEMBER(naomi_state::suchie3_mp_r)
 static INPUT_PORTS_START( suchie3 )
 	PORT_INCLUDE( naomi_mp )
 	PORT_MODIFY("P1")
-	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(naomi_state, suchie3_mp_r)
+	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(naomi_state::suchie3_mp_r))
 INPUT_PORTS_END
 
-template <int P> CUSTOM_INPUT_MEMBER(naomi_state::naomi_kb_r)
+template <int P> ioport_value naomi_state::naomi_kb_r()
 {
 	for (int i = 0; i < 5; i++)
 	{
@@ -2125,7 +2125,7 @@ static INPUT_PORTS_START( naomi_kb )
 	// ---- ---x num lock
 
 	PORT_START("P1.KC1")
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(naomi_state, naomi_kb_r<0>)
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(naomi_state::naomi_kb_r<0>))
 
 	PORT_START("P1.KC2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -2266,7 +2266,7 @@ static INPUT_PORTS_START( naomi_kb )
 	// TODO: LED information, same as above
 
 	PORT_START("P2.KC1")
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(naomi_state, naomi_kb_r<1>)
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(naomi_state::naomi_kb_r<1>))
 
 	PORT_START("P2.KC2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )

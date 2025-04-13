@@ -195,13 +195,12 @@ private:
 
 	optional_ioport m_mouse0, m_mouse1, m_mouse2;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	void scc_mouse_irq( int x, int y );
 	void set_via_interrupt(int value);
 	void field_interrupts();
-	void vblank_irq();
 	void mouse_callback();
 
 	uint16_t ram_r(offs_t offset);
@@ -241,9 +240,9 @@ private:
 	void mac_via_irq(int state);
 	void update_volume();
 
-	void mac512ke_map(address_map &map);
-	void macplus_map(address_map &map);
-	void macse_map(address_map &map);
+	void mac512ke_map(address_map &map) ATTR_COLD;
+	void macplus_map(address_map &map) ATTR_COLD;
+	void macse_map(address_map &map) ATTR_COLD;
 
 	floppy_image_device *m_cur_floppy;
 	int m_hdsel, m_devsel;
@@ -415,14 +414,6 @@ void mac128_state::set_via_interrupt(int value)
 	field_interrupts();
 }
 
-void mac128_state::vblank_irq()
-{
-	if (m_macadb)
-	{
-		m_macadb->adb_vblank();
-	}
-}
-
 void mac128_state::update_volume()
 {
 	/* LS161 audio PWM counters TC (SND) -> LS04 inverter (/SND) ->
@@ -460,11 +451,6 @@ void mac128_state::vblank_w(int state)
 TIMER_CALLBACK_MEMBER(mac128_state::mac_scanline)
 {
 	const int scanline = param;
-
-	if (scanline == 0)
-	{
-		vblank_irq();
-	}
 
 	/* video beam in display (! VBLANK && ! HBLANK basically) */
 	if (scanline >= 28)
