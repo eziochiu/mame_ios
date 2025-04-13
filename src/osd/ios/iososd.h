@@ -87,6 +87,7 @@ public:
     // midi interface
     virtual std::unique_ptr<osd::midi_input_port> create_midi_input(std::string_view name) override {return nullptr;}
     virtual std::unique_ptr<osd::midi_output_port> create_midi_output(std::string_view name) override {return nullptr;}
+    virtual std::vector<osd::midi_port_info> list_midi_ports() override { return std::vector<osd::midi_port_info>(); }
     
     // osd_output
     virtual void output_callback(osd_output_channel channel, const util::format_argument_pack<char> &args) override;
