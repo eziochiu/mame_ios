@@ -398,11 +398,11 @@ void victor9k_state::ssda_sm_dtr_w(int state)
 	m_ssda->cts_w(state);
 	m_ssda->dcd_w(!state);
 
-    /*                           ___
-     * We're supposed to set the ENC/DEC input of the HC55516 to !state,
-     * but only playback/decode is currently supported, and that input
-     * is not implemenented.
-     */
+	/*                           ___
+	 * We're supposed to set the ENC/DEC input of the HC55516 to !state,
+	 * but only playback/decode is currently supported, and that input
+	 * is not implemenented.
+	 */
 }
 
 
@@ -866,4 +866,4 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY                     FULLNAME       FLAGS
-COMP( 1982, victor9k, 0,      0,      victor9k, victor9k, victor9k_state, empty_init, "Victor Business Products", "Victor 9000", MACHINE_IMPERFECT_COLORS | MACHINE_SUPPORTS_SAVE )
+COMP( 1982, victor9k, 0,      0,      victor9k, victor9k, victor9k_state, empty_init, "Victor Business Products", "Victor 9000", MACHINE_IMPERFECT_COLORS )
