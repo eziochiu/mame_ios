@@ -92,6 +92,10 @@ public:
     // osd_output
     virtual void output_callback(osd_output_channel channel, const util::format_argument_pack<char> &args) override;
     
+    // network
+    virtual std::unique_ptr<osd::network_device> open_network_device(int id, osd::network_handler &handler) override { return nullptr; }
+    virtual std::vector<osd::network_device_info> list_network_devices() override { return std::vector<osd::network_device_info>(); }
+
     // getters
     running_machine &machine() const { assert(m_machine != nullptr); return *m_machine; }
     render_target *target() const { assert(m_target != nullptr); return m_target; }
