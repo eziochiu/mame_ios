@@ -215,31 +215,31 @@ static bool has_arcade_software_pattern(const char* software_list)
     return false;
 }
 
-static bool is_arcade_compatible_system(const char* parent_driver)
-{
-    if (!parent_driver || strlen(parent_driver) <= 1)
-        return false;
+// static bool is_arcade_compatible_system(const char* parent_driver)
+// {
+//     if (!parent_driver || strlen(parent_driver) <= 1)
+//         return false;
         
-    // Systems that have compatible_with but are still considered arcade
-    static const char* arcade_systems[] = {
-        "neogeo",       // Neo Geo MVS/AES/CD
-        "cps1",         // Capcom Play System 1
-        "cps2",         // Capcom Play System 2
-        "cps3",         // Capcom Play System 3
-        "naomi",        // Sega NAOMI
-        "atomiswave",   // Sammy Atomiswave
-        "kinst",        // Killer Instinct hardware family
-        "pgm",          // PolyGame Master
-        nullptr
-    };
+//     // Systems that have compatible_with but are still considered arcade
+//     static const char* arcade_systems[] = {
+//         "neogeo",       // Neo Geo MVS/AES/CD
+//         "cps1",         // Capcom Play System 1
+//         "cps2",         // Capcom Play System 2
+//         "cps3",         // Capcom Play System 3
+//         "naomi",        // Sega NAOMI
+//         "atomiswave",   // Sammy Atomiswave
+//         "kinst",        // Killer Instinct hardware family
+//         "pgm",          // PolyGame Master
+//         nullptr
+//     };
     
-    for (int i = 0; arcade_systems[i]; i++) {
-        if (strcmp(parent_driver, arcade_systems[i]) == 0)
-            return true;
-    }
+//     for (int i = 0; arcade_systems[i]; i++) {
+//         if (strcmp(parent_driver, arcade_systems[i]) == 0)
+//             return true;
+//     }
     
-    return false;
-}
+//     return false;
+// }
 
 static bool has_media_types_only(const char* software_list)
 {
@@ -275,6 +275,25 @@ static bool has_media_types_only(const char* software_list)
     }
     
     return true; // All items were media types
+}
+
+static bool is_blacklisted_from_arcade(const char* driver_name)
+{
+    if (!driver_name)
+        return false;
+        
+    // Drivers that should never be classified as arcade
+    static const char* blacklisted_drivers[] = {
+        "vc4000",          // Interton VC 4000 console
+        nullptr
+    };
+    
+    for (int i = 0; blacklisted_drivers[i]; i++) {
+        if (strstr(driver_name, blacklisted_drivers[i]) != nullptr)
+            return true;
+    }
+    
+    return false;
 }
 
 //============================================================
@@ -421,9 +440,13 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
         }
     }
 
-    if (is_arcade_compatible_system(driver->parent)) {
-        info->type = MYOSD_GAME_TYPE_ARCADE;
+    if (is_blacklisted_from_arcade(driver->type.source())) {
+        info->type = MYOSD_GAME_TYPE_CONSOLE;
     }
+
+    // if (is_arcade_compatible_system(driver->parent)) {
+    //     info->type = MYOSD_GAME_TYPE_ARCADE;
+    // }
 
     // Debugging
     // Get software list count
