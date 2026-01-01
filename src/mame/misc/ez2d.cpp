@@ -64,6 +64,13 @@ Ez2DJ series:
 */
 
 #include "emu.h"
+#include "bus/isa/isa_cards.h"
+#include "bus/pci/rivatnt.h"
+//#include "bus/rs232/hlemouse.h"
+//#include "bus/rs232/null_modem.h"
+//#include "bus/rs232/rs232.h"
+//#include "bus/rs232/sun_kbd.h"
+//#include "bus/rs232/terminal.h"
 #include "cpu/i386/i386.h"
 #include "machine/pci.h"
 #include "machine/pci-ide.h"
@@ -72,13 +79,6 @@ Ez2DJ series:
 #include "machine/i82371eb_ide.h"
 #include "machine/i82371eb_acpi.h"
 #include "machine/i82371eb_usb.h"
-#include "bus/isa/isa_cards.h"
-#include "bus/pci/rivatnt.h"
-//#include "bus/rs232/hlemouse.h"
-//#include "bus/rs232/null_modem.h"
-//#include "bus/rs232/rs232.h"
-//#include "bus/rs232/sun_kbd.h"
-//#include "bus/rs232/terminal.h"
 #include "machine/w83977tf.h"
 
 
@@ -98,8 +98,8 @@ public:
 private:
 	required_device<pentium2_device> m_maincpu;
 
-	void ez2d_map(address_map &map);
-	void ez2d_io(address_map &map);
+	void ez2d_map(address_map &map) ATTR_COLD;
+	void ez2d_io(address_map &map) ATTR_COLD;
 
 	static void winbond_superio_config(device_t *device);
 };

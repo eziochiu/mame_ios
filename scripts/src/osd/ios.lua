@@ -38,8 +38,8 @@ project ("osd_" .. _OPTIONS["osd"])
      files {
         MAME_DIR .. "src/osd/interface/inputseq.cpp",
         MAME_DIR .. "src/osd/interface/inputseq.h",
-        MAME_DIR .. "src/osd/osdnet.cpp",
-        MAME_DIR .. "src/osd/osdnet.h",
+--        MAME_DIR .. "src/osd/osdnet.cpp",
+--        MAME_DIR .. "src/osd/osdnet.h",
         MAME_DIR .. "src/osd/watchdog.cpp",
         MAME_DIR .. "src/osd/watchdog.h",
         MAME_DIR .. "src/osd/interface/nethandler.cpp",

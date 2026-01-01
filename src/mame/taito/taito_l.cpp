@@ -1356,7 +1356,7 @@ void taitol_2cpu_state::raimais(machine_config &config)
 
 	ym2610_device &ymsnd(YM2610(config, "ymsnd", 8_MHz_XTAL)); /* verified on pcb (8Mhz OSC is also for the 2nd z80) */
 	ymsnd.irq_handler().set_inputline("audiocpu", 0);
-	ymsnd.add_route(0, "mono", 0.25);
+	ymsnd.add_route(0, "mono", 0.75);
 	ymsnd.add_route(1, "mono", 1.0);
 	ymsnd.add_route(2, "mono", 1.0);
 
@@ -2175,9 +2175,9 @@ void taitol_1cpu_state::init_plottinga()
 }
 
 
-GAME( 1988, raimais,   0,        raimais,   raimais,   taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation Japan", "Raimais (World)", 0 )
-GAME( 1988, raimaisj,  raimais,  raimais,   raimaisj,  taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation", "Raimais (Japan)", 0 )
-GAME( 1988, raimaisjo, raimais,  raimais,   raimaisj,  taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation", "Raimais (Japan, first revision)", 0 )
+GAME( 1988, raimais,   0,        raimais,   raimais,   taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation Japan", "Raimais (World, rev 1)", 0 )
+GAME( 1988, raimaisj,  raimais,  raimais,   raimaisj,  taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation", "Raimais (Japan, rev 1)", 0 )
+GAME( 1988, raimaisjo, raimais,  raimais,   raimaisj,  taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation", "Raimais (Japan)", 0 )
 
 GAME( 1988, fhawk,     0,        fhawk,     fhawk,     fhawk_state,       empty_init,     ROT270, "Taito Corporation Japan", "Fighting Hawk (World)", 0 )
 GAME( 1988, fhawkj,    fhawk,    fhawk,     fhawkj,    fhawk_state,       empty_init,     ROT270, "Taito Corporation", "Fighting Hawk (Japan)", 0 )
@@ -2190,7 +2190,7 @@ GAME( 1988, kurikint,  0,        kurikint,  kurikint,  taitol_2cpu_state, empty_
 GAME( 1988, kurikintw, kurikint, kurikint,  kurikintj, taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation (World Games, Inc. license)", "Kuri Kinton (US, World Games license)", 0 )
 GAME( 1988, kurikintu, kurikint, kurikint,  kurikintj, taitol_2cpu_state, empty_init,     ROT0,   "Taito America Corporation", "Kuri Kinton (US)", 0 )
 GAME( 1988, kurikintj, kurikint, kurikint,  kurikintj, taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation", "Kuri Kinton (Japan)", 0 )
-GAME( 1988, kurikinta, kurikint, kurikint,  kurikinta, taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation Japan", "Kuri Kinton (World, prototype?)", 0 )
+GAME( 1988, kurikinta, kurikint, kurikint,  kurikinta, taitol_2cpu_state, empty_init,     ROT0,   "Taito Corporation Japan", "Kuri Kinton (World, prototype)", 0 )
 
 GAME( 1989, plotting,  0,        plotting,  plotting,  taitol_1cpu_state, empty_init,     ROT0,   "Taito Corporation Japan", "Plotting (World set 1)", 0 )
 GAME( 1989, plottinga, plotting, plotting,  plotting,  taitol_1cpu_state, init_plottinga, ROT0,   "Taito Corporation Japan", "Plotting (World set 2, protected)", 0 )

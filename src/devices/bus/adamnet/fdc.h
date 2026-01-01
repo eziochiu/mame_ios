@@ -33,12 +33,12 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// optional information overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual ioport_constructor device_input_ports() const override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// device_adamnet_card_interface overrides
 	virtual void adamnet_reset_w(int state) override;
@@ -53,13 +53,14 @@ private:
 
 	static void floppy_formats(format_registration &fr);
 
-	uint8_t data_r(offs_t offset);
+	uint8_t read_data_r(offs_t offset);
+	uint8_t write_data_r(offs_t offset);
 	uint8_t p1_r();
 	void p1_w(uint8_t data);
 	uint8_t p2_r();
 	void p2_w(uint8_t data);
 
-	void adam_fdc_mem(address_map &map);
+	void adam_fdc_mem(address_map &map) ATTR_COLD;
 };
 
 

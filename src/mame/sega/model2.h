@@ -1,5 +1,5 @@
 // license:BSD-3-Clause
-// copyright-holders:R. Belmont, Olivier Galibert, ElSemi, Angelo Salese
+// copyright-holders:R. Belmont, Olivier Galibert, ElSemi, Angelo Salese, Matthew Daniels
 #ifndef MAME_SEGA_MODEL2_H
 #define MAME_SEGA_MODEL2_H
 
@@ -7,6 +7,7 @@
 
 #include "315-5881_crypt.h"
 #include "315-5838_317-0229_comp.h"
+#include "dsb2.h"
 #include "dsbz80.h"
 #include "m2comm.h"
 #include "segabill.h"
@@ -51,7 +52,8 @@ public:
 		m_bufferram(*this, "bufferram"),
 		m_soundram(*this, "soundram"),
 		m_maincpu(*this,"maincpu"),
-		m_dsbz80(*this, DSBZ80_TAG),
+		m_dsbz80(*this, "dsbz80"),
+		m_dsb2(*this, "dsb2"),
 		m_m1audio(*this, M1AUDIO_TAG),
 		m_uart(*this, "uart"),
 		m_m2comm(*this, "m2comm"),
@@ -83,12 +85,11 @@ public:
 	std::unique_ptr<model2_renderer> m_poly;
 
 	/* Public for access by the ioports */
-	DECLARE_CUSTOM_INPUT_MEMBER(daytona_gearbox_r);
+	ioport_value daytona_gearbox_r();
 
 	/* Public for access by MCFG */
 	TIMER_DEVICE_CALLBACK_MEMBER(model2_interrupt);
 	u16 crypt_read_callback(u32 addr);
-	DECLARE_MACHINE_START(model2);
 
 
 	/* Public for access by GAME() */
@@ -103,8 +104,8 @@ public:
 	void init_powsledm();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	required_shared_ptr<u32> m_workram;
 	required_shared_ptr<u32> m_bufferram;
@@ -113,7 +114,8 @@ protected:
 	optional_shared_ptr<u16> m_soundram;
 
 	required_device<i960_cpu_device> m_maincpu;
-	optional_device<dsbz80_device> m_dsbz80;    // Z80-based MPEG Digital Sound Board
+	optional_device<dsbz80_device> m_dsbz80;        // Z80-based MPEG Digital Sound Board
+	optional_device<dsb2_device> m_dsb2;            // 68k-based MPEG Digital Sound Board
 	optional_device<segam1audio_device> m_m1audio;  // Model 1 standard sound board
 	required_device<i8251_device> m_uart;
 	optional_device<m2comm_device> m_m2comm;        // Model 2 communication board
@@ -149,9 +151,6 @@ protected:
 	std::unique_ptr<raster_state> m_raster;
 	std::unique_ptr<geo_state> m_geo;
 	bitmap_rgb32 m_sys24_bitmap;
-//  u32 m_soundack;
-	void model2_check_irq_state();
-	void model2_check_irqack_state(u32 data);
 	u8 m_gearsel = 0;
 	u8 m_lightgun_mux = 0;
 
@@ -191,13 +190,14 @@ protected:
 	void irq_ack_w(u32 data);
 	u32 irq_enable_r();
 	void irq_enable_w(offs_t offset, u32 data, u32 mem_mask = ~0);
-	u32 model2_serial_r(offs_t offset, u32 mem_mask = ~0);
-	void model2_serial_w(offs_t offset, u32 data, u32 mem_mask = ~0);
+	void irq_update();
+	u8 model2_serial_r(offs_t offset);
+	void model2_serial_w(offs_t offset, u8 data);
 	void horizontal_sync_w(u16 data);
 	void vertical_sync_w(u16 data);
 	u32 doa_prot_r(offs_t offset, u32 mem_mask = ~0);
 	u32 doa_unk_r();
-	void sega_0229_map(address_map &map);
+	void sega_0229_map(address_map &map) ATTR_COLD;
 	int m_prot_a = 0;
 
 	void raster_init(memory_region *texture_rom);
@@ -219,16 +219,15 @@ protected:
 	u8 driveio_porth_r();
 	void driveio_port_w(u8 data);
 	void push_geo_data(u32 data);
-	DECLARE_VIDEO_START(model2);
 	void reset_model2_scsp();
 	u32 screen_update_model2(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 //  void screen_vblank_model2(int state);
-//  void sound_ready_w(int state);
+	void sound_ready_w(int state);
 	template <int TNum> TIMER_DEVICE_CALLBACK_MEMBER(model2_timer_cb);
 	void scsp_irq(offs_t offset, u8 data);
 
-	void model2_3d_frame_start( void );
-	void geo_parse( void );
+	void model2_3d_frame_start();
+	void geo_parse();
 	void model2_3d_frame_end( bitmap_rgb32 &bitmap, const rectangle &cliprect );
 	void draw_framebuffer(bitmap_rgb32 &bitmap, const rectangle &cliprect );
 
@@ -238,14 +237,14 @@ protected:
 
 	void sj25_0207_01(machine_config &config);
 
-	void drive_io_map(address_map &map);
-	void drive_map(address_map &map);
-	void geo_sharc_map(address_map &map);
-	void model2_base_mem(address_map &map);
-	void model2_5881_mem(address_map &map);
-	void model2_0229_mem(address_map &map);
-	void model2_snd(address_map &map);
-	void scsp_map(address_map &map);
+	void drive_io_map(address_map &map) ATTR_COLD;
+	void drive_map(address_map &map) ATTR_COLD;
+	void geo_sharc_map(address_map &map) ATTR_COLD;
+	void model2_base_mem(address_map &map) ATTR_COLD;
+	void model2_5881_mem(address_map &map) ATTR_COLD;
+	void model2_0229_mem(address_map &map) ATTR_COLD;
+	void model2_snd(address_map &map) ATTR_COLD;
+	void scsp_map(address_map &map) ATTR_COLD;
 
 	void debug_init();
 	void debug_commands(const std::vector<std::string_view> &params);
@@ -253,7 +252,7 @@ protected:
 	void debug_tri_dump_command(const std::vector<std::string_view> &params);
 	void debug_help_command(const std::vector<std::string_view> &params);
 
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 	u32 m_intreq = 0;
 	u32 m_intena = 0;
@@ -335,8 +334,8 @@ public:
 	{}
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	required_device<mb86234_device> m_copro_tgp;
 	required_shared_ptr<u32> m_copro_tgp_program;
@@ -368,12 +367,12 @@ protected:
 	void copro_atan_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 	u32 copro_atan_r();
 
-	void model2_tgp_mem(address_map &map);
+	void model2_tgp_mem(address_map &map) ATTR_COLD;
 
-	void copro_tgp_prog_map(address_map &map);
-	void copro_tgp_data_map(address_map &map);
-	void copro_tgp_io_map(address_map &map);
-	void copro_tgp_rf_map(address_map &map);
+	void copro_tgp_prog_map(address_map &map) ATTR_COLD;
+	void copro_tgp_data_map(address_map &map) ATTR_COLD;
+	void copro_tgp_io_map(address_map &map) ATTR_COLD;
+	void copro_tgp_rf_map(address_map &map) ATTR_COLD;
 
 	virtual void copro_halt() override;
 	virtual void copro_boot() override;
@@ -403,7 +402,7 @@ protected:
 	void desert_output_w(u8 data);
 	void vcop_output_w(u8 data);
 
-	void model2o_mem(address_map &map);
+	void model2o_mem(address_map &map) ATTR_COLD;
 };
 
 /*****************************
@@ -421,7 +420,7 @@ public:
 
 	u32 maxx_r(offs_t offset, u32 mem_mask = ~0);
 	void daytona_maxx(machine_config &config);
-	void model2o_maxx_mem(address_map &map);
+	void model2o_maxx_mem(address_map &map) ATTR_COLD;
 
 private:
 	int m_maxxstate = 0;
@@ -443,13 +442,13 @@ public:
 	void daytona_gtx(machine_config &config);
 
 protected:
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	int m_gtx_state = 0;
 
 	u8 gtx_r(offs_t offset);
-	void model2o_gtx_mem(address_map &map);
+	void model2o_gtx_mem(address_map &map) ATTR_COLD;
 };
 
 /*****************************
@@ -477,14 +476,33 @@ public:
 	void zeroguna(machine_config &config);
 
 protected:
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
-	void model2a_crx_mem(address_map &map);
-	void model2a_5881_mem(address_map &map);
-	void model2a_0229_mem(address_map &map);
+	void model2a_crx_mem(address_map &map) ATTR_COLD;
+	void model2a_5881_mem(address_map &map) ATTR_COLD;
+	void model2a_0229_mem(address_map &map) ATTR_COLD;
 
 private:
 	required_device<sega_billboard_device> m_billboard;
+};
+
+class model2a_airwlkrs_state : public model2a_state
+{
+public:
+	model2a_airwlkrs_state(const machine_config &mconfig, device_type type, const char *tag)
+		: model2a_state(mconfig, type, tag),
+		  m_player_in(*this, "IN_P%u", 1U),
+		  m_start_in(*this, "IN_START")
+	{}
+
+	void airwlkrs(machine_config &config);
+
+	template <unsigned N> ioport_value start_in_r();
+
+private:
+	required_ioport_array<4> m_player_in;
+	required_ioport m_start_in;
+	u8 m_key_matrix;
 };
 
 /*****************************
@@ -514,8 +532,8 @@ public:
 	void zerogun(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	required_device<adsp21062_device> m_copro_adsp;
 
@@ -526,14 +544,14 @@ protected:
 	u32 copro_sharc_buffer_r(offs_t offset);
 	void copro_sharc_buffer_w(offs_t offset, u32 data);
 
-	void model2b_crx_mem(address_map &map);
-	void model2b_5881_mem(address_map &map);
-	void model2b_0229_mem(address_map &map);
+	void model2b_crx_mem(address_map &map) ATTR_COLD;
+	void model2b_5881_mem(address_map &map) ATTR_COLD;
+	void model2b_0229_mem(address_map &map) ATTR_COLD;
 	// TODO: split into own class
-	void rchase2_iocpu_map(address_map &map);
-	void rchase2_ioport_map(address_map &map);
+	void rchase2_iocpu_map(address_map &map) ATTR_COLD;
+	void rchase2_ioport_map(address_map &map) ATTR_COLD;
 
-	void copro_sharc_map(address_map &map);
+	void copro_sharc_map(address_map &map) ATTR_COLD;
 
 	virtual void copro_halt() override;
 	virtual void copro_boot() override;
@@ -569,8 +587,8 @@ public:
 	void topskatr(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	required_device<mb86235_device> m_copro_tgpx4;
 	required_shared_ptr<u64> m_copro_tgpx4_program;
@@ -579,12 +597,10 @@ protected:
 	u32 copro_fifo_r();
 	void copro_fifo_w(u32 data);
 
-	TIMER_DEVICE_CALLBACK_MEMBER(model2c_interrupt);
-
-	void model2c_crx_mem(address_map &map);
-	void model2c_5881_mem(address_map &map);
-	void copro_tgpx4_map(address_map &map);
-	void copro_tgpx4_data_map(address_map &map);
+	void model2c_crx_mem(address_map &map) ATTR_COLD;
+	void model2c_5881_mem(address_map &map) ATTR_COLD;
+	void copro_tgpx4_map(address_map &map) ATTR_COLD;
+	void copro_tgpx4_data_map(address_map &map) ATTR_COLD;
 
 	virtual void copro_halt() override;
 	virtual void copro_boot() override;
@@ -601,20 +617,28 @@ struct m2_poly_extra_data
 	model2_state *  state;
 	u32      lumabase;
 	u32      colorbase;
-	u32 *    texsheet;
-	u32      texwidth;
-	u32      texheight;
-	u32      texx, texy;
+	u8       checker;
+	u32 *    texsheet[6];
+	u32      texwidth[6];
+	u32      texheight[6];
+	u32      texx[6];
+	u32      texy[6];
 	u8       texmirrorx;
 	u8       texmirrory;
+	u8       luma;
 };
-
 
 static inline u16 get_texel( u32 base_x, u32 base_y, int x, int y, u32 *sheet )
 {
-	u32  baseoffs = ((base_y/2)*512)+(base_x/2);
-	u32  texeloffs = ((y/2)*512)+(x/2);
-	u32  offset = baseoffs + texeloffs;
+	int x2 = base_x + x;
+	int y2 = base_y + y;
+	if (x2 >= 1024)
+	{
+		// texture sheets are mapped as 2048x1024 but stored in RAM as 1024x2048
+		x2 -= 1024;
+		y2 ^= 1024;
+	}
+	u32  offset = ((y2 / 2) * 512) + (x2 / 2);
 	u32  texel = sheet[offset>>1];
 
 	if ( offset & 1 )
@@ -643,14 +667,6 @@ public:
 		, m_state(state)
 		, m_destmap(512, 512)
 	{
-		m_renderfuncs[0] = &model2_renderer::model2_3d_render_0;
-		m_renderfuncs[1] = &model2_renderer::model2_3d_render_1;
-		m_renderfuncs[2] = &model2_renderer::model2_3d_render_2;
-		m_renderfuncs[3] = &model2_renderer::model2_3d_render_3;
-		m_renderfuncs[4] = &model2_renderer::model2_3d_render_4;
-		m_renderfuncs[5] = &model2_renderer::model2_3d_render_5;
-		m_renderfuncs[6] = &model2_renderer::model2_3d_render_6;
-		m_renderfuncs[7] = &model2_renderer::model2_3d_render_7;
 		m_xoffs = 90;
 		m_yoffs = -8;
 	}
@@ -661,68 +677,19 @@ public:
 	void set_xoffset(int16_t xoffs) { m_xoffs = xoffs; }
 	void set_yoffset(int16_t yoffs) { m_yoffs = yoffs; }
 
-	/* checker = 0, textured = 0, transparent = 0 */
-	#define MODEL2_FUNC 0
-	#define MODEL2_FUNC_NAME    model2_3d_render_0
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
+	template <bool Translucent>
+	void draw_scanline_solid(int32_t scanline, const extent_t& extent, const m2_poly_extra_data& object, int threadid);
 
-	/* checker = 0, textured = 0, translucent = 1 */
-	#define MODEL2_FUNC 1
-	#define MODEL2_FUNC_NAME    model2_3d_render_1
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	/* checker = 0, textured = 1, translucent = 0 */
-	#define MODEL2_FUNC 2
-	#define MODEL2_FUNC_NAME    model2_3d_render_2
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	/* checker = 0, textured = 1, translucent = 1 */
-	#define MODEL2_FUNC 3
-	#define MODEL2_FUNC_NAME    model2_3d_render_3
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	/* checker = 1, textured = 0, translucent = 0 */
-	#define MODEL2_FUNC 4
-	#define MODEL2_FUNC_NAME    model2_3d_render_4
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	/* checker = 1, textured = 0, translucent = 1 */
-	#define MODEL2_FUNC 5
-	#define MODEL2_FUNC_NAME    model2_3d_render_5
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	/* checker = 1, textured = 1, translucent = 0 */
-	#define MODEL2_FUNC 6
-	#define MODEL2_FUNC_NAME    model2_3d_render_6
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	/* checker = 1, textured = 1, translucent = 1 */
-	#define MODEL2_FUNC 7
-	#define MODEL2_FUNC_NAME    model2_3d_render_7
-	#include "model2rd.ipp"
-	#undef MODEL2_FUNC
-	#undef MODEL2_FUNC_NAME
-
-	scanline_render_func m_renderfuncs[8];
+	template <bool Translucent>
+	void draw_scanline_tex(int32_t scanline, const extent_t& extent, const m2_poly_extra_data& object, int threadid);
 
 private:
 	model2_state& m_state;
 	bitmap_rgb32 m_destmap;
 	int16_t m_xoffs = 0, m_yoffs = 0;
+
+	template <bool Translucent>
+	u32 fetch_bilinear_texel(const m2_poly_extra_data& object, const u32 miplevel, const float fu, const float fv);
 };
 
 typedef model2_renderer::vertex_t poly_vertex;
@@ -768,6 +735,7 @@ struct model2_state::triangle
 	u8              luma = 0;
 	int16_t         viewport[4] = { 0, 0, 0, 0 };
 	int16_t         center[2] = { 0, 0 };
+	u8              window = 0;
 };
 
 struct model2_state::quad_m2
@@ -822,6 +790,8 @@ struct model2_state::raster_state
 	u16             max_z = 0;                      // Maximum sortable Z value
 	u16             texture_ram[0x10000];           // Texture RAM pointer
 	u8              log_ram[0x40000];               // Log RAM pointer
+	u8              cur_window = 0;                 // Current window
+	plane           clip_plane[4][4];               // Polygon clipping planes
 };
 
 /*******************************************

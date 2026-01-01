@@ -32,8 +32,8 @@ public:
 	void set_flip(bool flip);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	tile_indirection_delegate m_newtilecb;
@@ -42,8 +42,8 @@ private:
 	required_device<screen_device> m_screen;
 	bool m_flipscreen;
 	int m_partialupdates; // the original hardware needs this, the cloned hardware does not.
-	u8  m_xpos_shift = 0;
-	u16 m_color_entry_mask = 0;
+	u8 m_xpos_shift;
+	u16 m_color_entry_mask;
 };
 
 

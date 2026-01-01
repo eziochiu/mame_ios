@@ -6,7 +6,7 @@
 #pragma once
 
 #include "generalplus_gpl16250.h"
-#include "machine/generalplus_gpl16250soc.h"
+#include "machine/generalplus_gpl1625x_soc.h"
 #include "generalplus_gpl16250_m.h"
 #include "bus/generic/slot.h"
 #include "bus/generic/carts.h"
@@ -38,8 +38,8 @@ public:
 	void nand_kiugames();
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	uint8_t read_nand(offs_t offset);
 	std::vector<uint16_t> m_sdram;
@@ -54,6 +54,8 @@ private:
 	optional_region_ptr<uint8_t> m_nandregion;
 
 	void nand_create_stripped_region();
+
+	void dma_complete_hacks(int state);
 
 	std::vector<uint8_t> m_strippedrom{};
 	int m_strippedsize = 0;

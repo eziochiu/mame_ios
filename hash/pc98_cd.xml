@@ -3,7 +3,7 @@
 <!--
 license:CC0-1.0
 -->
-<softwarelist name="pc98_cd" description="NEC PC-9801 CD-ROMs">
+<softwarelist name="pc98_cd" description="NEC PC-98 CD-ROMs">
 
 	<!--
 
@@ -16,13 +16,34 @@ license:CC0-1.0
 
 	-->
 
-<!--  OS disks  -->
+<!-- !Operating System disks -->
 
-	<!--
-	    PC-9801RS is the only machine that can boot the install disk in MAME, others complain about the CPU not being set to HIGH.
-	    Even on the RS, it doesn't launch the GUI part of the install program, so you are left with an incomplete installation.
-	    These are emulation bugs, it works correctly on real hardware.
-	-->
+	<software name="freebsd21" supported="no">
+		<!--
+		Origin: private dump (sampson)
+		<rom name="FreeBSD.bin" size="758814000" crc="b3b9fa4d" md5="2e3e4dbb8be25fc0f6c5e72c96bbfd46" sha1="60a27b813432d879bb8bb8f50b0203c289e5c242" />
+		-->
+		<!-- "XFree86 3.1.2 Beta(98) Version PL.0" printed on CD -->
+		<!-- "ISO 9660 / Rock Ridge extension" printed on CD -->
+		<!-- 07/1996 as per file timestamps -->
+		<description>FreeBSD(98) Nyuumon Kit (2.1.0R)</description>
+		<year>1996</year>
+		<publisher>Shuwa System</publisher>
+		<notes><![CDATA[
+boot.flp: cannot read CD-ROM device at install time
+atapi.flp: cannot read HDD device when partitioning
+Fumbles HDD detection at Heads greater than 8, Sectors greater than 17
+]]></notes>
+		<info name="alt_title" value="FreeBSD(98) 入門キット" />
+		<info name="serial" value="V008-SSUN" />
+		<info name="usage" value="Needs boot.flp or atapi.flp formatted with 2HC spec, use hidden command format /6 from MS-DOS then use rawrite.exe provided from disk" />
+		<part name="cdrom" interface="cdrom">
+			<diskarea name="cdrom">
+				<disk name="freebsd" sha1="9a1b03c223be4a1e12d7d99654f84f5d11edf75f" />
+			</diskarea>
+		</part>
+	</software>
+
 	<software name="os2warp3" supported="no">
 		<!--
 		Origin: private dump (sampson)
@@ -31,6 +52,11 @@ license:CC0-1.0
 		<description>OS/2 Warp V3 - Nihongo-ban</description>
 		<year>1995</year>
 		<publisher>NEC / IBM</publisher>
+		<notes><![CDATA[
+Fumbles [ATAPI] driver autodetection, workaround by manual driver install
+Runs too fast on pc9821ap2 (cfr. double mouse click not working, video running at x4 speed)
+Has [PC9801-86] DAC FIFO issues
+]]></notes>
 		<part name="flop1" interface="floppy_5_25">
 			<feature name="part_id" value="Install Disk" />
 			<dataarea name="flop" size="1261568">
@@ -51,9 +77,87 @@ license:CC0-1.0
 		</part>
 	</software>
 
+	<software name="plamo3x" supported="partial">
+		<!--
+		Origin: Plamo Linux ring.gr.jp
+		plamo-3.x.iso         sha1=a454655ddf48934d01a508911f3c4825434cee7c md5=c0a2ff5216fd3457399268f2ba0d983a
+		plamo-3.x-contrib.iso sha1=d80d57bfc3ecf05343f0bcbdde30bd5e10525137 md5=0c969f5643aa48355551902f54f563f1
+		-->
+		<description>Plamo Linux 3.x</description>
+		<year>2003</year>
+		<publisher>Plamo Linux</publisher>
+		<notes><![CDATA[
+Slackware-based distro
+https://git.sr.ht/~nkali/plamo98-goodies/tree/main/item/plamo3x/install.md
+pc9821ap2: installer randomly corrupt logs at startup when entering 256 color mode (clear output fixes it)
+Cannot install GRUB once install completed, need workaround (verify)
+Booting with load rootdsk from (fd1) fails (verify, GRUB has issues specifically with these disks)
+]]></notes>
+		<info name="usage" value="cfr. detailed URL in XML notes node" />
+		<part name="flop1" interface="floppy_3_5">
+			<feature name="part_id" value="Boot Disk" />
+			<dataarea name="flop" size="1474560">
+				<rom name="bootdsk.img" size="1474560" crc="38647e2a" sha1="b959b43cbacc5b189fd6246312413cda9fe8ff19" />
+			</dataarea>
+		</part>
+		<part name="flop2" interface="floppy_3_5">
+			<feature name="part_id" value="Root Disk" />
+			<dataarea name="flop" size="1474560">
+				<rom name="rootdsk.img" size="1474560" crc="e8fd82e8" sha1="9c23f79967d2af34c7790d14166645e35fd56e55" />
+			</dataarea>
+		</part>
+		<part name="cdrom1" interface="cdrom">
+			<diskarea name="cdrom">
+				<disk name="plamo-3.x" sha1="6dbb4e58161b8117832d95c524b98d8addb5cade"/>
+			</diskarea>
+		</part>
+		<part name="cdrom2" interface="cdrom">
+			<diskarea name="cdrom">
+				<disk name="plamo-3.x-contrib" sha1="35aa2f1bf839be0417a45bcc309f5f64457285c6"/>
+			</diskarea>
+		</part>
+	</software>
+
+	<software name="plamo33"  supported="partial">
+		<!--
+		Origin: Plamo Linux ring.gr.jp
+		plamo-3.3.iso         sha1=80012a39c4567ac649fd3ba94c3e51e1e8a29e8d md5=ace1849cbf2cdfc6b657e2e2254f0821
+		plamo-3.3-contrib.iso sha1=15aba189c5846db625589135aa248134e311afa3 md5=af5f608ec74d356b8fb1fa307ccbcbe4
+		-->
+		<description>Plamo Linux 3.3</description>
+		<year>2003</year>
+		<publisher>Plamo Linux</publisher>
+		<notes><![CDATA[
+Slackware-based distro, cfr. plamo3x
+]]></notes>
+		<info name="usage" value="cfr. detailed URL in plamo3x XML notes node" />
+		<part name="flop1" interface="floppy_3_5">
+			<feature name="part_id" value="Boot Disk" />
+			<dataarea name="flop" size="1474560">
+				<rom name="bootdsk.img" size="1474560" crc="f8cc84cc" sha1="64e3d3d148a931adb8607cdd5f35d4273cd7ea87" />
+			</dataarea>
+		</part>
+		<part name="flop2" interface="floppy_3_5">
+			<feature name="part_id" value="Root Disk" />
+			<dataarea name="flop" size="1474560">
+				<rom name="rootdsk.img" size="1474560" crc="a686291e" sha1="fa5e61023925788774458e7f49ea2a16efadef1b" />
+			</dataarea>
+		</part>
+		<part name="cdrom1" interface="cdrom">
+			<diskarea name="cdrom">
+				<disk name="plamo-3.3" sha1="6f8b0a3c0d947bb30cd632cad7789a77ac664f8d"/>
+			</diskarea>
+		</part>
+		<part name="cdrom2" interface="cdrom">
+			<diskarea name="cdrom">
+				<disk name="plamo-3.3-contrib" sha1="a2abdc63bae1e9e7ddcf5458941909c2dad5b8fd"/>
+			</diskarea>
+		</part>
+	</software>
+
 	<!--
 
-	Current status of Windows OSes:
+	Outdated status of Windows OSes (i.e. test me again, move to notes)
 
 	Windows 95: works, but the PC-9801-86 driver has some trouble playing sounds
 	Windows 98: installer complains about not having at least a 66 MHz CPU
@@ -282,7 +386,7 @@ license:CC0-1.0
 		</part>
 	</software>
 
-	<software name="win95" supported="partial">
+	<software name="win95">
 		<!--
 		Origin: Unknown
 		<rom name="Microsoft Windows 95 PC-98 (JPN).iso" size="81395712" crc="d402c155" sha1="14d10f62db11397ea46bdf02d1619f1b8e1ff345"/>
@@ -340,6 +444,7 @@ license:CC0-1.0
 		</part>
 	</software>
 
+	<!-- TODO: retest me, potentially lift partial -->
 	<software name="win95o2" supported="partial">
 		<!--
 		Origin: Neo Kobe Collection
@@ -439,7 +544,7 @@ license:CC0-1.0
 		</part>
 	</software>
 
-	<software name="xa12c8ss">
+	<software name="xa12c8ss" supported="no">
 		<!--
 		Origin: Neo Kobe Collection
 		CCD converted to CUE with GNU ccd2cue
@@ -451,6 +556,9 @@ license:CC0-1.0
 		<description>PC-9821Xa12C8 System Software</description>
 		<year>1995</year>
 		<publisher>NEC</publisher>
+		<notes><![CDATA[
+Media for undumped pc9821xa12
+]]></notes>
 		<part name="flop1" interface="floppy_5_25">
 			<feature name="part_id" value="System Install Disk #1" />
 			<dataarea name="flop" size="1261568">
@@ -484,7 +592,7 @@ license:CC0-1.0
 	</software>
 
 
-<!--  Game disks  -->
+<!-- !Game disks -->
 
 	<software name="aitd2">
 		<!--
@@ -1713,6 +1821,7 @@ license:CC0-1.0
 		<description>NEC Demonstration CD-ROM - Evolution and Dinosaurs</description>
 		<year>1992</year>
 		<publisher>NEC</publisher>
+		<info name="usage" value="Requires AVGDRV.SYS or AVSDRV.SYS CD driver" />
 		<part name="cdrom" interface="cdrom">
 			<diskarea name="cdrom">
 				<disk name="nec demonstration cd-rom - evolution and dinosaurs (japan)" sha1="b07a302de9f90b5eb958a35381cdda1f050ed37e" />
@@ -1745,8 +1854,7 @@ license:CC0-1.0
 		</part>
 	</software>
 
-	<!-- Hangs shortly after starting a new game -->
-	<software name="diesirae" supported="no">
+	<software name="diesirae" supported="partial">
 		<!--
 		Origin: redump.org
 		<rom name="Dies Irae (Japan) (Track 01).bin" size="12272736" crc="d5c723ca" sha1="158e4de6a5d908bafd2d0a8dc651f1cbdaf2c47d"/>
@@ -1817,6 +1925,10 @@ license:CC0-1.0
 		<description>Dies Irae</description>
 		<year>1996</year>
 		<publisher>ファミリーソフト (Family Soft)</publisher>
+		<notes><![CDATA[
+Should it have BGMs during gameplay?
+Not extensively tested
+]]></notes>
 		<info name="serial" value="21D-2032"/>
 		<info name="alt_title" value="ディエス イレ" />
 		<info name="release" value="19960215" />
@@ -2854,8 +2966,12 @@ license:CC0-1.0
 		<description>Giten Megami Tensei - Tokyo Mokushiroku</description>
 		<year>1997</year>
 		<publisher>アスキー (ASCII)</publisher>
+		<notes><![CDATA[
+Fussy with HIMEM.SYS and EMM386.EXE as suggested by manual, use VEM486 instead.
+]]></notes>
 		<info name="alt_title" value="偽典・女神転生 東京黙示録" />
 		<info name="release" value="19970404" />
+		<info name="usage" value="Before starting to install prepare a writable DOS boot floppy (msdos62:flop8). Game needs a memory manager, SMARTDRV.EXE and MOUSE.COM loaded there" />
 		<part name="cdrom" interface="cdrom">
 			<diskarea name="cdrom">
 				<disk name="giten megami tensei - tokyo mokushiroku (japan)" sha1="5ec487543a5e2b6dbf0d8e2b78c7d36307d60599" />
@@ -4288,8 +4404,12 @@ license:CC0-1.0
 		<description>Master of Magic</description>
 		<year>1996</year>
 		<publisher>ローカス (Locus)</publisher>
+		<notes><![CDATA[
+Fussy with HIMEM.SYS and EMM386.EXE provided by boot disk, tbd VEM486 use.
+]]></notes>
 		<info name="alt_title" value="マスター・オブ・マジック" />
 		<info name="release" value="19961206" />
+		<info name="usage" value="Prepare a DOS format /s floppy image before starting to install." />
 		<part name="cdrom" interface="cdrom">
 			<diskarea name="cdrom">
 				<disk name="master of magic (japan)" sha1="055bd04d20a57a8a3ef70b906f80beecee67f6a3" />
@@ -5000,7 +5120,6 @@ license:CC0-1.0
 		</part>
 	</software>
 
-	<!-- Black screen on boot -->
 	<software name="ppersia2" supported="no">
 		<!--
 		Origin: redump.org
@@ -5010,6 +5129,10 @@ license:CC0-1.0
 		<description>Prince of Persia 2 - The Shadow &amp; The Flame</description>
 		<year>1995</year>
 		<publisher>インタープログ (Interprog)</publisher>
+		<notes><![CDATA[
+Mangles boot disk creation, doesn't make it bootable
+With .fdi disk, will either black screen or respond to user presses, eventually bringing in gameplay with no sound
+]]></notes>
 		<info name="release" value="19950108" />
 		<info name="serial" value="IP-047"/>
 		<info name="alt_title" value="プリンス・オブ・ペルシャ２ ザ・シャドウ アンド ザ・フレーム" />

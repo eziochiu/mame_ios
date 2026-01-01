@@ -123,8 +123,8 @@ public:
 	void grid1101(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -153,9 +153,9 @@ private:
 
 	void kbd_put(u16 data);
 
-	void grid1101_io(address_map &map);
-	void grid1101_map(address_map &map);
-	void grid1121_map(address_map &map);
+	void grid1101_io(address_map &map) ATTR_COLD;
+	void grid1101_map(address_map &map) ATTR_COLD;
+	void grid1121_map(address_map &map) ATTR_COLD;
 
 	bool m_kbd_ready = false;
 	uint16_t m_kbd_data = 0;
@@ -444,7 +444,7 @@ void gridcomp_state::grid1131(machine_config &config)
 {
 	grid1121(config);
 	subdevice<screen_device>("screen")->set_screen_update(FUNC(gridcomp_state::screen_update_113x));
-	subdevice<screen_device>("screen")->set_raw(XTAL(15'000'000)/2, 720, 0, 512, 262, 0, 240); // XXX
+	subdevice<screen_device>("screen")->set_raw(XTAL(15'000'000)/2, 720, 0, 512, 262, 0, 256);
 }
 
 void gridcomp_state::grid1139(machine_config &config)
@@ -613,8 +613,8 @@ ROM_END
 
 //    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY           FULLNAME           FLAGS
 COMP( 1982, grid1101, 0,        0,      grid1101, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass 1101",    MACHINE_NO_SOUND_HW | MACHINE_IMPERFECT_CONTROLS )
-COMP( 1982, grid1109, grid1101, 0,      grid1109, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass 1109",    MACHINE_IS_SKELETON )
-COMP( 1984, grid1121, 0,        0,      grid1121, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1121", MACHINE_IS_SKELETON )
-COMP( 1984, grid1129, grid1121, 0,      grid1129, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1129", MACHINE_IS_SKELETON )
-COMP( 1984, grid1131, grid1121, 0,      grid1131, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1131", MACHINE_IS_SKELETON )
-COMP( 1984, grid1139, grid1121, 0,      grid1139, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1139", MACHINE_IS_SKELETON )
+COMP( 1982, grid1109, grid1101, 0,      grid1109, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass 1109",    MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+COMP( 1984, grid1121, 0,        0,      grid1121, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1121", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+COMP( 1984, grid1129, grid1121, 0,      grid1129, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1129", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+COMP( 1984, grid1131, grid1121, 0,      grid1131, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1131", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+COMP( 1984, grid1139, grid1121, 0,      grid1139, gridcomp, gridcomp_state, empty_init, "GRiD Computers", "Compass II 1139", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

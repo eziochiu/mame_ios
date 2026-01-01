@@ -65,8 +65,8 @@ private:
 	required_memory_region m_boot_rom;
 	required_memory_region m_os7_rom;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	uint8_t mreq_r(offs_t offset);
 	void mreq_w(offs_t offset, uint8_t data);
@@ -84,8 +84,6 @@ private:
 	uint8_t m6801_p3_r();
 	void m6801_p3_w(uint8_t data);
 	void m6801_p4_w(uint8_t data);
-
-	void vdc_int_w(int state);
 
 	void os3_w(int state);
 
@@ -110,9 +108,8 @@ private:
 	int m_spindis;
 
 	// video state
-	int m_vdp_nmi = 0;
-	void adam_io(address_map &map);
-	void adam_mem(address_map &map);
+	void adam_io(address_map &map) ATTR_COLD;
+	void adam_mem(address_map &map) ATTR_COLD;
 };
 
 #endif // MAME_COLECO_ADAM_H

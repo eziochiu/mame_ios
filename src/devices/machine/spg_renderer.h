@@ -57,16 +57,16 @@ public:
 
 protected:
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
-	enum blend_enable_t : const bool
+	enum blend_enable_t : bool
 	{
 		BlendOff = false,
 		BlendOn = true
 	};
 
-	enum flipx_t : const bool
+	enum flipx_t : bool
 	{
 		FlipXOff = false,
 		FlipXOn = true

@@ -64,9 +64,19 @@ public:
     virtual void wait_for_debugger(device_t &device, bool firststop) override {}
 
     // audio overridables
-    virtual void update_audio_stream(const int16_t *buffer, int samples_this_frame) override;
-    virtual void set_mastervolume(int attenuation) override;
     virtual bool no_sound() override;
+    virtual bool sound_external_per_channel_volume() override;
+    virtual bool sound_split_streams_per_source() override;
+    virtual uint32_t sound_get_generation() override;
+    virtual osd::audio_info sound_get_information() override;
+    virtual uint32_t sound_stream_sink_open(uint32_t node, std::string name, uint32_t rate) override;
+    virtual uint32_t sound_stream_source_open(uint32_t node, std::string name, uint32_t rate) override;
+    virtual void sound_stream_close(uint32_t id) override;
+    virtual void sound_stream_sink_update(uint32_t id, const int16_t *buffer, int samples_this_frame) override;
+    virtual void sound_stream_source_update(uint32_t id, int16_t *buffer, int samples_this_frame) override;
+    virtual void sound_stream_set_volumes(uint32_t id, const std::vector<float> &db) override;
+    virtual void sound_begin_update() override;
+    virtual void sound_end_update() override;    
 
     // input overridables
     virtual void customize_input_type_list(std::vector<input_type_entry> &typelist) override;
@@ -87,10 +97,15 @@ public:
     // midi interface
     virtual std::unique_ptr<osd::midi_input_port> create_midi_input(std::string_view name) override {return nullptr;}
     virtual std::unique_ptr<osd::midi_output_port> create_midi_output(std::string_view name) override {return nullptr;}
+    virtual std::vector<osd::midi_port_info> list_midi_ports() override { return std::vector<osd::midi_port_info>(); }
     
     // osd_output
     virtual void output_callback(osd_output_channel channel, const util::format_argument_pack<char> &args) override;
     
+    // network
+    virtual std::unique_ptr<osd::network_device> open_network_device(int id, osd::network_handler &handler) override { return nullptr; }
+    virtual std::vector<osd::network_device_info> list_network_devices() override { return std::vector<osd::network_device_info>(); }
+
     // getters
     running_machine &machine() const { assert(m_machine != nullptr); return *m_machine; }
     render_target *target() const { assert(m_target != nullptr); return m_target; }

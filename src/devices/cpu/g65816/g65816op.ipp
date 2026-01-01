@@ -1830,7 +1830,6 @@ TABLE_FUNCTION(void, set_line, (int line, int state))
 				{
 					CPU_STOPPED &= ~STOP_LEVEL_WAI;
 				}
-				return;
 			}
 			return;
 		case G65816_LINE_NMI:
@@ -1855,8 +1854,6 @@ TABLE_FUNCTION(void, set_line, (int line, int state))
 		case G65816_LINE_RDY:
 			return;
 	}
-
-	LINE_IRQ=1; // FIXME: this can't be right!
 }
 
 
@@ -1940,7 +1937,9 @@ TABLE_FUNCTION(int, execute, (int clocks))
 	// do a check here also in case we're in STOP_WAI mode - this'll clear it when the IRQ happens
 	g65816i_check_maskable_interrupt();
 
-	if (!CPU_STOPPED)
+	if (CPU_STOPPED)
+		debugger_wait_hook();
+	else
 	{
 		CLOCKS = clocks;
 		do

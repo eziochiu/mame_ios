@@ -187,6 +187,115 @@ void ios_osd_interface::output_callback(osd_output_channel channel, const util::
     }
 }
 
+static bool has_arcade_software_pattern(const char* software_list)
+{
+    if (!software_list || software_list[0] == 0)
+        return false;
+        
+    // Common arcade software list patterns
+    static const char* arcade_patterns[] = {
+        "neogeo",           // Neo Geo cartridges
+        "cps1", "cps2", "cps3",  // Capcom Play System
+        "naomi", "naomigd", // Sega NAOMI
+        "atomiswave",       // Sammy Atomiswave  
+        "pgm",              // PolyGame Master
+        "kinst",            // Killer Instinct
+        "playch10",         // Nintendo PlayChoice-10
+        "nss",              // Nintendo Super System
+        "megatech",         // Sega Mega-Tech
+        "megaplay",         // Sega Mega Play
+        nullptr
+    };
+    
+    for (int i = 0; arcade_patterns[i]; i++) {
+        if (strstr(software_list, arcade_patterns[i]) != nullptr)
+            return true;
+    }
+    
+    return false;
+}
+
+// static bool is_arcade_compatible_system(const char* parent_driver)
+// {
+//     if (!parent_driver || strlen(parent_driver) <= 1)
+//         return false;
+        
+//     // Systems that have compatible_with but are still considered arcade
+//     static const char* arcade_systems[] = {
+//         "neogeo",       // Neo Geo MVS/AES/CD
+//         "cps1",         // Capcom Play System 1
+//         "cps2",         // Capcom Play System 2
+//         "cps3",         // Capcom Play System 3
+//         "naomi",        // Sega NAOMI
+//         "atomiswave",   // Sammy Atomiswave
+//         "kinst",        // Killer Instinct hardware family
+//         "pgm",          // PolyGame Master
+//         nullptr
+//     };
+    
+//     for (int i = 0; arcade_systems[i]; i++) {
+//         if (strcmp(parent_driver, arcade_systems[i]) == 0)
+//             return true;
+//     }
+    
+//     return false;
+// }
+
+static bool has_media_types_only(const char* software_list)
+{
+    if (!software_list || software_list[0] == 0)
+        return false;
+        
+    // Common media type prefixes (not actual software lists)
+    static const char* media_prefixes[] = {
+        "hard", "cart:", "cdrm", "flop", "memc", "cass:", "prin:", 
+        "bitb:", "quik:", "snap:", "dump:", "cdrom:", 
+        "hard1:", nullptr
+    };
+    
+    // Check if ALL entries are media types
+    std::string software(software_list);
+    std::istringstream ss(software);
+    std::string item;
+    
+    while (std::getline(ss, item, ',')) {
+        bool is_media_type = false;
+        
+        for (int i = 0; media_prefixes[i]; i++) {
+            if (item.find(media_prefixes[i]) != std::string::npos) {
+                is_media_type = true;
+                break;
+            }
+        }
+        
+        // If we find any item that's NOT a media type, it's a real software list
+        if (!is_media_type) {
+            return false;
+        }
+    }
+    
+    return true; // All items were media types
+}
+
+static bool is_blacklisted_from_arcade(const char* driver_name)
+{
+    if (!driver_name)
+        return false;
+        
+    // Drivers that should never be classified as arcade
+    static const char* blacklisted_drivers[] = {
+        "vc4000",          // Interton VC 4000 console
+        nullptr
+    };
+    
+    for (int i = 0; blacklisted_drivers[i]; i++) {
+        if (strstr(driver_name, blacklisted_drivers[i]) != nullptr)
+            return true;
+    }
+    
+    return false;
+}
+
 //============================================================
 // get_game_info - convert game_driver to a myosd_game_info
 //============================================================
@@ -325,7 +434,50 @@ static void get_game_info(myosd_game_info* info, const game_driver *driver, runn
         
         if (false)
             info->type = MYOSD_GAME_TYPE_COMPUTER;
+        
+        if (has_arcade_software_pattern(info->software_list) || has_media_types_only(info->software_list)) {
+            info->type = MYOSD_GAME_TYPE_ARCADE;
+        }
     }
+
+    if (is_blacklisted_from_arcade(driver->type.source())) {
+        info->type = MYOSD_GAME_TYPE_CONSOLE;
+    }
+
+    // if (is_arcade_compatible_system(driver->parent)) {
+    //     info->type = MYOSD_GAME_TYPE_ARCADE;
+    // }
+
+    // Debugging
+    // Get software list count
+    // int software_count = 0;
+    // std::string software_names;
+    // if (info->software_list != nullptr && info->software_list[0] != 0) {
+    //     // Count commas + 1 to get approximate count of software items
+    //     const char* ptr = info->software_list;
+    //     software_count = 1; // Start with 1 if there's any content
+    //     while (*ptr) {
+    //         if (*ptr == ',') software_count++;
+    //         ptr++;
+    //     }
+        
+    //     // Get the actual software list names (first few for brevity)
+    //     software_names = std::string(info->software_list);
+    //     // Truncate if too long for display
+    //     if (software_names.length() > 50) {
+    //         software_names = software_names.substr(0, 50) + "...";
+    //     }
+    // } else {
+    //     software_names = "none";
+    // }
+
+    // // Create the debug description
+    // static std::unordered_set<std::string> g_descriptions;
+    // std::string description = std::string(driver->type.fullname()) + " | " + 
+    //                      (driver->compatible_with ? driver->compatible_with : "null") + " | " + 
+    //                      std::to_string(software_count) + " | " + 
+    //                      software_names;
+    // info->description = g_descriptions.insert(description).first->c_str();  
 }
 
 //============================================================

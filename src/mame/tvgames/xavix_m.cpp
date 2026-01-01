@@ -265,6 +265,8 @@ INTERRUPT_GEN_MEMBER(xavix_state::interrupt)
 		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 		m_video_ctrl |= 0x80;
 	}
+
+	xavix_interrupt_extra();
 }
 
 
@@ -282,6 +284,7 @@ void xavix_state::colmix_6ff2_w(uint8_t data)
 {
 	LOG("%s: colmix_6ff2_w %02x\n", machine().describe_context(), data);
 	m_colmix_ctrl[0] = data;
+	// bits 0xe0 seem to enable a TV static effect somehow, used by rad_opus
 }
 
 
@@ -453,6 +456,35 @@ uint8_t xavix_state::read_io1(uint8_t direction)
 	return m_in1->read();
 }
 
+uint8_t xavix_duelmast_state::read_io1(uint8_t direction)
+{
+	int pc = m_maincpu->pc();
+
+	// hacks to get it to boot.  It will still spin for a long time on a black
+	// screen before giving a card scanner error, you can bypass that with button 1
+	// but the game isn't playable
+
+	if (pc == 0x3c01)
+		return 0x00;
+
+	if (pc == 0x3c06)
+		return 0x02;
+
+	if (pc == 0x3c14)
+		return 0x04;
+
+	if (pc == 0x3c19)
+		return 0x00;
+
+	if (pc == 0x3c25)
+		return 0x04;
+
+	if (pc == 0x3c2a)
+		return 0x00;
+
+	return m_in1->read();
+}
+
 void xavix_state::write_io0(uint8_t data, uint8_t direction)
 {
 	// no special handling
@@ -465,44 +497,29 @@ void xavix_state::write_io1(uint8_t data, uint8_t direction)
 
 void xavix_i2c_state::write_io1(uint8_t data, uint8_t direction)
 {
-	if (direction & 0x08)
-	{
-		m_i2cmem->write_sda((data & 0x08) >> 3);
-	}
-
-	if (direction & 0x10)
-	{
-		m_i2cmem->write_scl((data & 0x10) >> 4);
-	}
+	m_i2cmem->write_sda(BIT(direction, 3) ? BIT(data, 3) : 1);
+	m_i2cmem->write_scl(BIT(direction, 4) ? BIT(data, 4) : 0);
 }
 
 // ltv_tam
 void xavix_i2c_ltv_tam_state::write_io1(uint8_t data, uint8_t direction)
 {
-	if (direction & 0x08)
-	{
-		m_i2cmem->write_sda((data & 0x08) >> 3);
-	}
+	m_i2cmem->write_sda(BIT(direction, 3) ? BIT(data, 3) : 1);
+	m_i2cmem->write_scl(BIT(direction, 2) ? BIT(data, 2) : 0);
 
-	if (direction & 0x04)
-	{
-		m_i2cmem->write_scl((data & 0x04) >> 2);
-	}
 }
 
+void xavix_i2c_mj_state::write_io1(uint8_t data, uint8_t direction)
+{
+	m_i2cmem->write_sda(BIT(data | ~direction, 1));
+	m_i2cmem->write_scl(BIT(data | ~direction, 0));
+}
 
 // for taikodp
 void xavix_i2c_cart_state::write_io1(uint8_t data, uint8_t direction)
 {
-	if (direction & 0x08)
-	{
-		m_i2cmem->write_sda((data & 0x08) >> 3);
-	}
-
-	if (direction & 0x10)
-	{
-		m_i2cmem->write_scl((data & 0x10) >> 4);
-	}
+	m_i2cmem->write_sda(BIT(direction, 3) ? BIT(data, 3) : 1);
+	m_i2cmem->write_scl(BIT(direction, 4) ? BIT(data, 4) : 0);
 }
 
 void xavix_ekara_state::write_io0(uint8_t data, uint8_t direction)
@@ -531,8 +548,8 @@ void xavix_popira2_cart_state::write_io1(uint8_t data, uint8_t direction)
 {
 	if (m_cartslot->has_cart())
 	{
-		m_cartslot->write_sda((data & 0x08) >> 3);
-		m_cartslot->write_scl((data & 0x10) >> 4);
+		m_cartslot->write_sda(BIT(direction, 3) ? BIT(data, 3) : 1);
+		m_cartslot->write_scl(BIT(direction, 4) ? BIT(data, 4) : 0);
 	}
 }
 
@@ -548,8 +565,8 @@ void xavix_evio_cart_state::write_io1(uint8_t data, uint8_t direction)
 {
 	if (m_cartslot->has_cart())
 	{
-		m_cartslot->write_sda((data & 0x10) >> 4);
-		m_cartslot->write_scl((data & 0x20) >> 5);
+		m_cartslot->write_sda(BIT(direction, 4) ? BIT(data, 4) : 1);
+		m_cartslot->write_scl(BIT(direction, 5) ? BIT(data, 5) : 0);
 	}
 }
 
@@ -762,7 +779,7 @@ void xavix_state::timer_freq_w(uint8_t data)
 
 TIMER_CALLBACK_MEMBER(xavix_state::freq_timer_done)
 {
-	if (m_timer_control & 0x40) // Timer IRQ enable?
+	if ((m_timer_control & 0x40) && (!m_disable_timer_irq_hack)) // Timer IRQ enable?
 	{
 		m_irqsource |= 0x10;
 		m_timer_control |= 0x80;
@@ -855,16 +872,28 @@ void xavix_state::machine_start()
 	save_item(NAME(m_arena_control));
 	save_item(NAME(m_6ff0));
 	save_item(NAME(m_video_ctrl));
-	save_item(NAME(m_mastervol));
-	save_item(NAME(m_unk_snd75f8));
-	save_item(NAME(m_unk_snd75f9));
+	save_item(NAME(m_cyclerate));
+	save_item(NAME(m_mixer));
 	save_item(NAME(m_unk_snd75ff));
-	save_item(NAME(m_sndtimer));
+	save_item(NAME(m_tp));
 	save_item(NAME(m_timer_baseval));
 	save_item(NAME(m_spritereg));
+}
+
+void superxavix_state::machine_start()
+{
+	xavix_state::machine_start();
+
+	save_item(NAME(m_superxavix_pal_index));
+	save_item(NAME(m_superxavix_bitmap_pal_index));
+	save_item(NAME(m_sx_plt_address));
+	save_item(NAME(m_sx_plt_mode));
+	save_item(NAME(m_plotter_has_byte));
+	save_item(NAME(m_plotter_current_byte));
 
 	save_item(NAME(m_sx_extended_extbus));
 }
+
 
 void xavix_state::machine_reset()
 {
@@ -892,14 +921,13 @@ void xavix_state::machine_reset()
 
 	m_spritereg = 0;
 
-	m_mastervol = 0x00;
-	m_unk_snd75f8 = 0x00;
-	m_unk_snd75f9 = 0x00;
+	m_cyclerate = 0x00;
+	m_mixer = 0x00;
 	m_unk_snd75ff = 0x00;
 
 	for (int i = 0; i < 4; i++)
 	{
-		m_sndtimer[i] = 0x00;
+		m_tp[i] = 0x00;
 	}
 
 	std::fill(std::begin(m_spritefragment_dmaparam1), std::end(m_spritefragment_dmaparam1), 0x00);
@@ -927,7 +955,6 @@ void xavix_state::machine_reset()
 
 	m_sound_regbase = 0x02; // rad_bb doesn't initialize this and expects it here.  It is possible the default is 0x00, but since 0x00 and 0x01 are special (zero page and stack) those values would also use bank 0x02
 
-
 	m_sprite_xhigh_ignore_hack = true;
 
 	m_cpuspace = &m_maincpu->space(AS_PROGRAM);
@@ -935,15 +962,19 @@ void xavix_state::machine_reset()
 	m_extbusctrl[0] = 0x00;
 	m_extbusctrl[1] = 0x00;
 	m_extbusctrl[2] = 0x00;
+}
 
-
-	// SuperXaviX
+void superxavix_state::machine_reset()
+{
+	xavix_state::machine_reset();
 
 	for (int i = 0; i < 3; i++)
 	{
 		m_sx_extended_extbus[i] = 0x00;
 	}
+
 }
+
 
 typedef device_delegate<uint8_t(int which, int half)> xavix_interrupt_vector_delegate;
 
@@ -972,19 +1003,19 @@ int16_t xavix_state::get_vectors(int which, int half)
 
 // additional SuperXaviX / XaviX2002 stuff
 
-void xavix_state::extended_extbus_reg0_w(uint8_t data)
+void superxavix_state::extended_extbus_reg0_w(uint8_t data)
 {
 	LOG("%s: extended_extbus_reg0_w %02x\n", machine().describe_context(), data);
 	m_sx_extended_extbus[0] = data;
 }
 
-void xavix_state::extended_extbus_reg1_w(uint8_t data)
+void superxavix_state::extended_extbus_reg1_w(uint8_t data)
 {
 	LOG("%s: extended_extbus_reg1_w %02x\n", machine().describe_context(), data);
 	m_sx_extended_extbus[1] = data;
 }
 
-void xavix_state::extended_extbus_reg2_w(uint8_t data)
+void superxavix_state::extended_extbus_reg2_w(uint8_t data)
 {
 	LOG("%s: extended_extbus_reg2_w %02x\n", machine().describe_context(), data);
 	m_sx_extended_extbus[2] = data;

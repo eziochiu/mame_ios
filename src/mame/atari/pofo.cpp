@@ -93,12 +93,12 @@ public:
 	void portfolio(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
-	void portfolio_io(address_map &map);
-	void portfolio_lcdc(address_map &map);
-	void portfolio_mem(address_map &map);
+	void portfolio_io(address_map &map) ATTR_COLD;
+	void portfolio_lcdc(address_map &map) ATTR_COLD;
+	void portfolio_mem(address_map &map) ATTR_COLD;
 
 	void check_interrupt();
 	void trigger_interrupt(int level);
@@ -927,7 +927,7 @@ void portfolio_state::portfolio(machine_config &config)
 	// internal ram
 	RAM(config, RAM_TAG).set_default_size("128K");
 
-	NVRAM(config, "nvram", nvram_device::DEFAULT_RANDOM);
+	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 }
 
 

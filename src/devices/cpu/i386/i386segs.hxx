@@ -216,7 +216,7 @@ void i386_device::i386_check_sreg_validity(int reg)
 	}
 }
 
-int i386_device::i386_limit_check(int seg, uint32_t offset)
+int i386_device::i386_limit_check(int seg, uint32_t offset, int size)
 {
 	if(PROTECTED_MODE && !V8086_MODE)
 	{
@@ -231,7 +231,7 @@ int i386_device::i386_limit_check(int seg, uint32_t offset)
 		}
 		else
 		{
-			if(offset > m_sreg[seg].limit)
+			if((offset + size - 1) > m_sreg[seg].limit)
 			{
 				LOGMASKED(LOG_LIMIT_CHECK, "Limit check at 0x%08x failed. Segment %04x, limit %08x, offset %08x\n",m_pc,m_sreg[seg].selector,m_sreg[seg].limit,offset);
 				//machine().debug_break();
@@ -372,7 +372,7 @@ void i386_device::i386_sreg_load(uint16_t selector, uint8_t reg, bool *fault)
 	if(fault) *fault = false;
 }
 
-void i386_device::i386_trap(int irq, int irq_gate, int trap_level)
+void i386_device::i386_trap(int irq, int irq_gate)
 {
 	/*  I386 Interrupts/Traps/Faults:
 	 *
@@ -768,7 +768,7 @@ void i386_device::i386_trap_with_error(int irq, int irq_gate, int trap_level, ui
 {
 	try
 	{
-		i386_trap(irq,irq_gate,trap_level);
+		i386_trap(irq,irq_gate);
 		if(irq == 8 || irq == 10 || irq == 11 || irq == 12 || irq == 13 || irq == 14)
 		{
 			// for these exceptions, an error code is pushed onto the stack by the processor.
@@ -794,7 +794,7 @@ void i386_device::i386_trap_with_error(int irq, int irq_gate, int trap_level, ui
 				PUSH16(error);
 		}
 	}
-	catch(uint64_t e)
+	catch([[maybe_unused]] uint64_t e)
 	{
 		trap_level++;
 		if(trap_level == 1)
@@ -2528,7 +2528,7 @@ inline void i386_device::dri_changed()
 								if(true_mask & mem_mask)
 								{
 									m_dr[6] |= 1 << dr;
-									i386_trap(1,1,0);
+									i386_trap(1,1);
 								}
 							},
 							&m_dr_breakpoints[dr]);
@@ -2544,7 +2544,7 @@ inline void i386_device::dri_changed()
 								if(true_mask & mem_mask)
 								{
 									m_dr[6] |= 1 << dr;
-									i386_trap(1,1,0);
+									i386_trap(1,1);
 								}
 							},
 							[this, dr, true_mask](offs_t offset, u32& data, u32 mem_mask)
@@ -2552,7 +2552,7 @@ inline void i386_device::dri_changed()
 								if(true_mask & mem_mask)
 								{
 									m_dr[6] |= 1 << dr;
-									i386_trap(1,1,0);
+									i386_trap(1,1);
 								}
 							},
 							&m_dr_breakpoints[dr]);

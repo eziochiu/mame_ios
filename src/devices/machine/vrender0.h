@@ -16,7 +16,6 @@
 #include "video/vrender0.h"
 #include "sound/vrender0.h"
 #include "emupal.h"
-#include "speaker.h"
 #include "diserial.h"
 
 //**************************************************************************
@@ -34,14 +33,14 @@ public:
 	// construction/destruction
 	vr0uart_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	void regs_map(address_map &map);
+	void regs_map(address_map &map) ATTR_COLD;
 	void set_channel_num(int ch) { m_channel_num = ch; }
 	void set_parent(vrender0soc_device *parent) { m_parent = parent; }
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	uint32_t control_r();
@@ -75,52 +74,56 @@ private:
 DECLARE_DEVICE_TYPE(VRENDER0_UART, vr0uart_device)
 
 
-class vrender0soc_device : public device_t
+class vrender0soc_device : public device_t, public device_mixer_interface
 {
 public:
 	// construction/destruction
 	vrender0soc_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
-	void regs_map(address_map &map);
-	void audiovideo_map(address_map &map);
-	void texture_map(address_map &map);
-	void frame_map(address_map &map);
-	template<class T> void set_host_cpu_tag(T &&tag) { m_host_cpu.set_tag(std::forward<T>(tag)); }
+	// configurations
+	template<class T> void set_host_space_tag(T &&tag, int spacenum) { m_host_space.set_tag(std::forward<T>(tag), spacenum); }
 	void set_external_vclk(const uint32_t vclk) { m_ext_vclk = vclk; }
 	void set_external_vclk(const XTAL vclk) { m_ext_vclk = vclk.value(); }
+	auto int_callback() { return m_int_cb.bind(); }
+	template <int Port> auto tx_callback() { return m_write_tx[Port].bind(); }
+	template <int Port> void rx_w(int state) { m_uart[Port]->rx_w((uint8_t)state); }
+
+	// handlers
 	bool crt_is_blanked() { return ((m_crtcregs[0] & 0x0200) == 0x0200); }
 	bool crt_active_vblank_irq();
-	void IntReq( int num );
+	void IntReq(int num);
 	uint8_t irq_callback();
 	bool irq_pending() { return m_intst; }
 	void write_line_tx(int port, uint8_t value);
-	template <int Port> auto tx_callback() { return write_tx[Port].bind(); }
-	template <int Port> void rx_w(int state) { m_uart[Port]->rx_w((uint8_t)state); }
+
+	// address map
+	void regs_map(address_map &map) ATTR_COLD;
+	void audiovideo_map(address_map &map) ATTR_COLD;
+	void texture_map(address_map &map) ATTR_COLD;
+	void frame_map(address_map &map) ATTR_COLD;
 
 protected:
 	// device-level overrides
 	//virtual void device_validity_check(validity_checker &valid) const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
-	required_device <se3208_device> m_host_cpu;
-	required_device <screen_device> m_screen;
-	required_device <palette_device> m_palette;
-	required_device <vr0video_device> m_vr0vid;
-	required_device <vr0sound_device> m_vr0snd;
-	required_device <speaker_device> m_lspeaker;
-	required_device <speaker_device> m_rspeaker;
-	required_device_array <vr0uart_device, 2> m_uart;
-	required_shared_ptr <uint32_t> m_crtcregs;
+	required_device<screen_device> m_screen;
+	required_device<palette_device> m_palette;
+	required_device<vr0video_device> m_vr0vid;
+	required_device<vr0sound_device> m_vr0snd;
+	required_device_array<vr0uart_device, 2> m_uart;
+	required_shared_ptr<uint32_t> m_crtcregs;
+	required_address_space m_host_space;
 	std::unique_ptr<uint16_t []> m_textureram;
 	std::unique_ptr<uint16_t []> m_frameram;
 
-	address_space *m_host_space = nullptr;
 	uint32_t m_ext_vclk = 0;
 
-	devcb_write_line::array<2> write_tx;
+	devcb_write_line m_int_cb;
+	devcb_write_line::array<2> m_write_tx;
 
 	// INTC
 	uint32_t m_inten = 0;
