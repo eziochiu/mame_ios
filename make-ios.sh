@@ -198,7 +198,12 @@ else
         fi
     done
 
-    find . -name "*.o" -type f | xargs libtool -static -o "$PROJDIR/$LIBMAME.a" 2>&1 | grep -v "has no symbols"
+    find . -name "*.o" -type f > objlist.txt
+    find "$PROJDIR/$BUILDDIR/osx_clang/obj/x64/Release/src/osd/ios" -name "*.o" -type f 2>/dev/null >> objlist.txt
+    find "$PROJDIR/$BUILDDIR/osx_clang/obj/x64/Release/generated" -name "*.o" -type f 2>/dev/null >> objlist.txt
+    find "$PROJDIR/$BUILDDIR/osx_clang/obj/x64/Release/ocore_ios" -name "*.o" -type f 2>/dev/null >> objlist.txt
+    libtool -static -o "$PROJDIR/$LIBMAME.a" -filelist objlist.txt 2>&1 | grep -v "has no symbols"
+    rm objlist.txt
 
     cd "$PROJDIR"
     rm -rf "$WORKDIR"
