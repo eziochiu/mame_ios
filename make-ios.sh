@@ -181,8 +181,20 @@ if [ "$1" == "clean" ]; then
     rm $LIBMAME.a.gz || true
 else
     LIBDIR="$BUILDDIR/osx_clang/bin/x64/Release"
+    WORKDIR="/tmp/mame-merge-$$"
+    OLDPWD=`pwd`
+
     echo Archiving $LIBMAME.a
-    libtool -static -o $LIBMAME.a libmame.a $LIBDIR/*.a $LIBDIR/mame_mame/*.a 2> /dev/null
-    rm libmame.a
+
+    mkdir -p "$WORKDIR" && cd "$WORKDIR" || exit -1
+
+    for lib in "$OLDPWD/$LIBDIR"/*.a "$OLDPWD/$LIBDIR"/mame_mame/*.a; do
+        [ -f "$lib" ] && ar -x "$lib"
+    done
+
+    libtool -static -o "$OLDPWD/$LIBMAME.a" *.o 2>&1 | grep -v "has no symbols"
+
+    cd "$OLDPWD"
+    rm -rf "$WORKDIR"
 fi
 
