@@ -182,19 +182,25 @@ if [ "$1" == "clean" ]; then
 else
     LIBDIR="$BUILDDIR/osx_clang/bin/x64/Release"
     WORKDIR="/tmp/mame-merge-$$"
-    OLDPWD=`pwd`
+    PROJDIR=`pwd`
 
     echo Archiving $LIBMAME.a
 
     mkdir -p "$WORKDIR" && cd "$WORKDIR" || exit -1
 
-    for lib in "$OLDPWD/$LIBDIR"/*.a "$OLDPWD/$LIBDIR"/mame_mame/*.a; do
-        [ -f "$lib" ] && ar -x "$lib"
+    i=0
+    for lib in "$PROJDIR/$LIBDIR"/*.a "$PROJDIR/$LIBDIR"/mame_mame/*.a; do
+        if [ -f "$lib" ]; then
+            libdir="lib_$i"
+            mkdir -p "$libdir"
+            (cd "$libdir" && ar -x "$lib")
+            i=$((i + 1))
+        fi
     done
 
-    libtool -static -o "$OLDPWD/$LIBMAME.a" *.o 2>&1 | grep -v "has no symbols"
+    find . -name "*.o" -type f | xargs libtool -static -o "$PROJDIR/$LIBMAME.a" 2>&1 | grep -v "has no symbols"
 
-    cd "$OLDPWD"
+    cd "$PROJDIR"
     rm -rf "$WORKDIR"
 fi
 
